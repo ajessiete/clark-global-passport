@@ -12,20 +12,32 @@
         <h2>{{ overall.correct }}/100 correct</h2><strong>{{ overall.percent }}%</strong>
     </div>
     <div class="passport-progress-track"><div class="passport-progress-fill" style="width:{{ overall.percent }}%"></div></div>
-    {% if overall.correct >= 80 %}<div class="year-complete-message">✓ Next level unlocked.</div>{% endif %}
+    {% if overall.correct >= 80 %}<div class="year-complete-message">✓ Strong progress — you have mastered at least 80 items in this level.</div>{% endif %}
 </section>
 
 <div class="det-theme-grid">
 {% for theme in themes %}
-    <a class="det-theme-card" href="{{ url_for('det_theme', level=level, theme_key=theme.key) }}">
+    {% if theme.unlocked %}
+    <a class="det-theme-card {% if theme.progress.correct >= 8 %}done{% endif %}" href="{{ url_for('det_theme', level=level, theme_key=theme.key) }}">
         <div class="det-theme-icon">{{ "%02d"|format(loop.index) }}</div>
         <div>
             <h3>{{ theme.title }}</h3>
             <div class="passport-progress-track"><div class="passport-progress-fill" style="width:{{ theme.progress.percent }}%"></div></div>
-            <small>{{ theme.progress.correct }}/10 correct</small>
+            <small>{{ theme.progress.correct }}/10 correct{% if theme.progress.correct >= 8 %} • Unit complete{% endif %}</small>
         </div>
         <span>→</span>
     </a>
+    {% else %}
+    <div class="det-theme-card locked">
+        <div class="det-theme-icon">🔒</div>
+        <div>
+            <h3>{{ theme.title }}</h3>
+            <div class="passport-progress-track"><div class="passport-progress-fill" style="width:0%"></div></div>
+            <small>Complete 8/10 in the previous unit</small>
+        </div>
+        <span></span>
+    </div>
+    {% endif %}
 {% endfor %}
 </div>
 {% endblock %}

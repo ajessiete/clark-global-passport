@@ -14,14 +14,23 @@
 <div class="det-item-map">
 {% for item in items %}
     {% set row = progress_map.get(item.key) %}
+    {% if item_unlocks.get(item.key) %}
     <a href="{{ url_for('det_item', level=level, item_key=item.key) }}"
-       class="det-map-node {% if row and row.correct %}done{% elif item.key == next_item.key %}current{% endif %}">
+       class="det-map-node {% if row and row.correct %}done{% elif next_item and item.key == next_item.key %}current{% endif %}">
         <span>{{ loop.index }}</span>
         <small>{{ item.type }}</small>
         {% if row and row.correct %}<b>✓</b>{% endif %}
     </a>
+    {% else %}
+    <div class="det-map-node locked">
+        <span>🔒</span>
+        <small>Item {{ loop.index }}</small>
+    </div>
+    {% endif %}
 {% endfor %}
 </div>
 
+{% if next_item %}
 <a class="button det-continue-button" href="{{ url_for('det_item', level=level, item_key=next_item.key) }}">Continue Practice →</a>
+{% endif %}
 {% endblock %}

@@ -942,10 +942,8 @@ def det_level_progress(student_id, level):
     }
 
 def det_level_unlocked(student_id, level):
-    if level == 1:
-        return True
-    previous = det_level_progress(student_id, level - 1)
-    return previous["correct"] >= 80
+    """All six DET learning levels are open so students can start at an appropriate level."""
+    return level in DET_LEVELS
 
 def det_theme_progress(student_id, level, theme_key):
     keys = {item["key"] for item in DET_ITEMS[level] if item["theme_key"] == theme_key}
@@ -955,6 +953,41 @@ def det_theme_progress(student_id, level, theme_key):
     ).all()
     correct = sum(1 for row in rows if row.correct)
     return {"correct": correct, "total": 10, "percent": correct * 10}
+
+def det_theme_unlocked(student_id, level, theme_key):
+    theme_keys = [key for key, _title in DET_THEMES]
+    if theme_key not in theme_keys:
+        return False
+    index = theme_keys.index(theme_key)
+    if index == 0:
+        return True
+    previous_key = theme_keys[index - 1]
+    return det_theme_progress(student_id, level, previous_key)["correct"] >= 8
+
+def det_item_unlocked(student_id, level, item):
+    items = [row for row in DET_ITEMS[level] if row["theme_key"] == item["theme_key"]]
+    index = next((i for i, row in enumerate(items) if row["key"] == item["key"]), None)
+    if index is None:
+        return False
+    if index == 0:
+        return True
+    previous = items[index - 1]
+    return bool(DETPracticeProgress.query.filter_by(
+        student_id=student_id,
+        item_key=previous["key"],
+        correct=True
+    ).first())
+
+def next_det_item_in_theme(student_id, level, theme_key):
+    items = [row for row in DET_ITEMS[level] if row["theme_key"] == theme_key]
+    for item in items:
+        progress = DETPracticeProgress.query.filter_by(
+            student_id=student_id,
+            item_key=item["key"]
+        ).first()
+        if det_item_unlocked(student_id, level, item) and (not progress or not progress.correct):
+            return item
+    return items[-1] if items else None
 
 def get_det_item(level, item_key):
     return next((item for item in DET_ITEMS.get(level, []) if item["key"] == item_key), None)
@@ -2071,6 +2104,7 @@ def det_level(level):
             "title": theme_title,
             "progress": progress,
             "next_item": first_open,
+            "unlocked": det_theme_unlocked(user.id, level, theme_key),
         })
 
     return render_template(
@@ -2091,6 +2125,9 @@ def det_theme(level, theme_key):
         return redirect(url_for("det_course"))
     if theme_key not in {key for key, _ in DET_THEMES}:
         return redirect(url_for("det_level", level=level))
+    if not det_theme_unlocked(user.id, level, theme_key):
+        flash("Finish at least 8 of 10 items in the previous unit to unlock this one.", "error")
+        return redirect(url_for("det_level", level=level))
 
     items = [item for item in DET_ITEMS[level] if item["theme_key"] == theme_key]
     progress_map = {
@@ -2098,7 +2135,8 @@ def det_theme(level, theme_key):
             student_id=user.id, level=level
         ).all()
     }
-    next_item = next((item for item in items if not progress_map.get(item["key"]) or not progress_map[item["key"]].correct), items[-1])
+    item_unlocks = {item["key"]: det_item_unlocked(user.id, level, item) for item in items}
+    next_item = next_det_item_in_theme(user.id, level, theme_key)
 
     return render_template(
         "det_theme.html",
@@ -2108,6 +2146,7 @@ def det_theme(level, theme_key):
         theme_key=theme_key,
         items=items,
         progress_map=progress_map,
+        item_unlocks=item_unlocks,
         progress=det_theme_progress(user.id, level, theme_key),
         next_item=next_item,
     )
@@ -2118,31 +2157,66 @@ def det_item(level, item_key):
     user = current_user()
     if not user or user.role != "student":
         return redirect(url_for("login"))
-    if level not in DET_LEVELS or not det_level_unlocked(user.id, level):
+
+    if level not in DET_LEVELS:
         return redirect(url_for("det_course"))
 
     item = get_det_item(level, item_key)
     if not item:
         return redirect(url_for("det_level", level=level))
 
-    row = DETPracticeProgress.query.filter_by(student_id=user.id, item_key=item_key).first()
+    if not det_theme_unlocked(user.id, level, item["theme_key"]):
+        flash("That unit is still locked.", "error")
+        return redirect(url_for("det_level", level=level))
+
+    if not det_item_unlocked(user.id, level, item):
+        flash("Complete the previous practice item first.", "error")
+        return redirect(url_for("det_theme", level=level, theme_key=item["theme_key"]))
+
+    row = DETPracticeProgress.query.filter_by(
+        student_id=user.id,
+        item_key=item_key
+    ).first()
     result = None
 
     if request.method == "POST":
-        answer = request.form.get("answer", "")
-        is_correct = answer == item["answer"]
-        if not row:
-            row = DETPracticeProgress(student_id=user.id, level=level, item_key=item_key)
-            db.session.add(row)
-        row.attempts += 1
-        row.last_answer = answer
-        row.correct = row.correct or is_correct
-        row.updated_at = datetime.utcnow()
-        db.session.commit()
+        answer = str(request.form.get("answer") or "").strip()
+        expected = str(item["answer"]).strip()
+
+        if not answer:
+            flash("Choose an answer before checking.", "error")
+            return redirect(url_for("det_item", level=level, item_key=item_key))
+
+        is_correct = answer == expected
+
+        try:
+            if not row:
+                row = DETPracticeProgress(
+                    student_id=user.id,
+                    level=level,
+                    item_key=item_key,
+                    attempts=0,
+                    correct=False,
+                    last_answer=""
+                )
+                db.session.add(row)
+
+            row.attempts = int(row.attempts or 0) + 1
+            row.last_answer = answer[:255]
+            row.correct = bool(row.correct) or is_correct
+            row.updated_at = datetime.utcnow()
+            db.session.commit()
+
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("DET practice answer save failed")
+            flash("Your answer could not be saved. Please try again.", "error")
+            return redirect(url_for("det_item", level=level, item_key=item_key))
+
         result = {
             "correct": is_correct,
-            "answer": item["answer"],
-            "explanation": item["explanation"],
+            "answer": expected,
+            "explanation": str(item["explanation"]),
         }
 
     return render_template(

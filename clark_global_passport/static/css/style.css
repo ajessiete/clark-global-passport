@@ -837,3 +837,19 @@ th{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.
 @media print{.topbar,.pwa-utility,.back-button,.resume-actions,.resume-edit-card{display:none!important}.page{padding:0}.resume-layout{grid-template-columns:210px 1fr}.resume-side{position:static}.resume-paper{box-shadow:none}}
 @media(max-width:900px){.resume-layout{grid-template-columns:1fr}.resume-side{position:static;display:grid;grid-template-columns:170px 1fr;gap:12px}.resume-photo-wrap{grid-row:1/6}.resume-photo,.resume-photo-placeholder{width:140px;height:140px}.resume-side-section{grid-column:2}.resume-two-column,.resume-project-grid{grid-template-columns:1fr}.teacher-student-title,.resume-actions{align-items:stretch;flex-direction:column}}
 @media(max-width:600px){.resume-side{display:block}.resume-photo-wrap{margin-bottom:12px}.resume-milestone-grid,.resume-activity-list{grid-template-columns:1fr}.resume-achievement{grid-template-columns:1fr}.resume-stat-row{grid-template-columns:1fr 1fr 1fr}.resume-paper{padding:20px}}
+
+
+/* DET free-level sequential-units v10.8.1 */
+.det-theme-card.locked,
+.det-map-node.locked{
+    opacity:.46;
+    cursor:not-allowed;
+    background:rgba(15,39,70,.035);
+}
+.det-theme-card.done{
+    border-color:rgba(46,125,90,.35);
+    background:rgba(46,125,90,.045);
+}
+.det-map-node.locked span{
+    font-size:1rem;
+}

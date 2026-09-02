@@ -398,3 +398,14 @@ The IELTS ranges are internal course labels and are not presented as an official
 - Teachers can open a student's Global Profile from the student adviser page.
 - Students and teachers can download the profile as an A4 PDF.
 - PDF generation is server-side using ReportLab.
+
+
+## v10.8.1 - DET Free Level Choice + Sequential Units
+
+- All six DET learning levels are immediately available.
+- Students can start at any level that matches their current English ability.
+- Within each level, Unit 1 is open first.
+- The next themed unit unlocks after mastering at least 8 of 10 items in the previous unit.
+- Within a unit, practice items unlock one at a time after the previous item is answered correctly.
+- DET answer saving has been hardened with explicit defaults, answer normalization, transaction rollback, and controlled error handling.
+- A failed answer save now logs the underlying server exception instead of producing an unhandled Internal Server Error.
