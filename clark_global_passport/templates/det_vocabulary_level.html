@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('det_vocabulary') }}">← Vocabulary Decks</a>
+<div class="page-title">
+    <p class="eyebrow">LEVEL {{ level }} VOCABULARY</p>
+    <h1>{{ level_meta.name }}</h1>
+    <p>{{ level_meta.band }} • 200 spaced-repetition cards</p>
+</div>
+
+<div class="grid two">
+<section class="card">
+    <p class="eyebrow">DUE NOW</p>
+    <div class="score-main">{{ summary.due }}</div>
+    <p>cards ready for review in this level</p>
+    {% if summary.next_card %}
+    <a class="button" href="{{ url_for('det_vocabulary_start', level=level) }}">Start Level {{ level }} Review →</a>
+    {% else %}
+    <div class="year-complete-message">✓ You're caught up with Level {{ level }} for now.</div>
+    {% endif %}
+</section>
+
+<section class="card">
+    <p class="eyebrow">LONG-TERM MEMORY</p>
+    <div class="score-main">{{ summary.learned }}</div>
+    <p>of {{ summary.total }} cards have reached Box 4 or higher.</p>
+    <div class="passport-progress-track"><div class="passport-progress-fill" style="width:{{ summary.percent }}%"></div></div>
+    <small>{{ summary.reviewed }} cards studied at least once</small>
+</section>
+</div>
+
+<section class="card">
+    <p class="eyebrow">YOUR DECK</p>
+    <h2>Level {{ level }} study stays separate.</h2>
+    <p class="muted">Reviewing this deck will only move through Level {{ level }} cards. You can switch to another level anytime from the Vocabulary Decks page.</p>
+</section>
+{% endblock %}

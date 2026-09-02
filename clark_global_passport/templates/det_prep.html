@@ -14,7 +14,7 @@
         <div>
             <p class="eyebrow">DET LEARNING PATH</p>
             <h2>6 Levels • 600 Practice Items</h2>
-            <p class="muted">Work through themed lessons at your level. Complete 80/100 to unlock the next level.</p>
+            <p class="muted">Choose any level that matches you. Inside each level, themed units unlock one at a time.</p>
         </div>
         <a class="button" href="{{ url_for('det_course') }}">Start Learning →</a>
     </div>
@@ -28,7 +28,7 @@
     {% endfor %}
     </div>
     <div class="vocab-launch">
-        <div><strong>100-Word Vocabulary Review</strong><span>{{ due_vocab }} cards due now</span></div>
+        <div><strong>6 Level Vocabulary Decks • 1,200 Cards</strong><span>{{ due_vocab }} cards due now across all levels</span></div>
         <a class="button secondary small" href="{{ url_for('det_vocabulary') }}">Review Vocabulary →</a>
     </div>
 </section>

@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-<a class="back-button" href="{{ url_for('det_vocabulary') }}">← Vocabulary Deck</a>
+<a class="back-button" href="{{ url_for('det_vocabulary_level', level=item.level) }}">← Level {{ item.level }} Deck</a>
 <div class="vocab-card-shell">
 <section class="card vocab-study-card">
     <div class="section-heading"><span class="pill">LEVEL {{ item.level }}</span><span>{{ remaining }} due</span></div>
-    <div class="vocab-word">{{ item.word }}</div>
+    <div class="vocab-card-type">{{ item.card_type }} • Card {{ item.card_number }}/10</div>
+    <div class="vocab-word">{{ item.front }}</div>
     <button type="button" class="button secondary reveal-vocab">Show Meaning</button>
     <div class="vocab-answer" hidden>
-        <h2>{{ item.meaning }}</h2>
+        <h2>{{ item.back }}</h2>
         <p>{{ item.example }}</p>
         <form method="post" class="srs-buttons">
             <button name="rating" value="again" class="danger-button">Again</button>

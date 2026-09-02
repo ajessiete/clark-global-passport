@@ -3,20 +3,36 @@
 <a class="back-button" href="{{ url_for('det_course') }}">← DET Learning Path</a>
 <div class="page-title">
     <p class="eyebrow">VOCABULARY TRAINER</p>
-    <h1>100-Word Spaced Repetition Deck</h1>
-    <p>Words return more or less often depending on how well you remember them.</p>
+    <h1>Choose Your Spaced Repetition Deck</h1>
+    <p>Each DET level has its own 200-card vocabulary deck. Start at the level that matches you — all six decks are open.</p>
 </div>
-<div class="grid two">
-<section class="card">
-    <p class="eyebrow">DUE NOW</p>
-    <div class="score-main">{{ due_count }}</div>
-    <p>cards ready for review</p>
-    {% if next_card %}<a class="button" href="{{ url_for('det_vocab_card', vocab_key=next_card.key) }}">Start Review →</a>{% else %}<div class="year-complete-message">✓ You're caught up for now.</div>{% endif %}
-</section>
-<section class="card">
-    <p class="eyebrow">LONG-TERM MEMORY</p>
-    <div class="score-main">{{ learned }}</div>
-    <p>of {{ total }} words have reached Box 4 or higher.</p>
-</section>
+
+<div class="vocab-overview-stats">
+    <div><strong>{{ total_cards }}</strong><span>cards across 6 decks</span></div>
+    <div><strong>{{ total_due }}</strong><span>due now</span></div>
+    <div><strong>{{ total_learned }}</strong><span>in long-term memory</span></div>
 </div>
+
+<div class="vocab-deck-grid">
+{% for deck in decks %}
+<a class="vocab-deck-card" href="{{ url_for('det_vocabulary_level', level=deck.level) }}">
+    <div class="section-heading">
+        <span class="det-theme-icon">{{ deck.level }}</span>
+        <span class="pill">{{ deck.meta.band }}</span>
+    </div>
+    <p class="eyebrow">LEVEL {{ deck.level }}</p>
+    <h2>{{ deck.meta.name }}</h2>
+    <p>{{ deck.total }} cards • {{ deck.due }} due now</p>
+    <div class="passport-progress-track"><div class="passport-progress-fill" style="width:{{ deck.percent }}%"></div></div>
+    <small>{{ deck.learned }}/{{ deck.total }} in long-term memory</small>
+    <span class="deck-open">Open Deck →</span>
+</a>
+{% endfor %}
+</div>
+
+<section class="card vocab-method-note">
+    <p class="eyebrow">HOW IT WORKS</p>
+    <h2>One word, multiple kinds of recall.</h2>
+    <p class="muted">Each level is built around 20 carefully leveled core words. Every word returns in 10 different learning cards — meaning, recall, context, sentence use, explanation, and mastery — for 200 spaced-repetition cards per level. This is more useful than seeing 200 unrelated words only once.</p>
+</section>
 {% endblock %}

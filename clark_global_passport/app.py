@@ -922,15 +922,41 @@ DET_ITEMS = {level: build_det_items(level) for level in DET_LEVELS}
 
 # 100-word SRS vocabulary deck: Levels 2–6 banks (20 each).
 DET_VOCABULARY = []
-for vocab_level in range(2, 7):
-    for index, (word, meaning, example) in enumerate(DET_WORD_BANKS[vocab_level], start=1):
-        DET_VOCABULARY.append({
-            "key": f"V{vocab_level}-{index:02d}",
-            "level": vocab_level,
-            "word": word,
-            "meaning": meaning,
-            "example": example,
-        })
+
+DET_VOCAB_CARD_TYPES = [
+    ("Meaning", lambda word, meaning, example: (word, meaning, example)),
+    ("Recall", lambda word, meaning, example: (meaning, word, example)),
+    ("In Context", lambda word, meaning, example: (word, meaning, example)),
+    ("Meaning Check", lambda word, meaning, example: (f"What does “{word}” mean?", meaning, example)),
+    ("Sentence Recall", lambda word, meaning, example: (example.replace(word, "_____").replace(word.capitalize(), "_____"), word, meaning)),
+    ("Explain It", lambda word, meaning, example: (word, f"Explain in your own words: {meaning}", example)),
+    ("Use It", lambda word, meaning, example: (word, "Make your own sentence before revealing the model.", example)),
+    ("Academic Use", lambda word, meaning, example: (word, meaning, f"Model use: {example}")),
+    ("Quick Recall", lambda word, meaning, example: (meaning, word, f"Say the word aloud, then compare: {example}")),
+    ("Mastery", lambda word, meaning, example: (word, meaning, f"Final check: {example}")),
+]
+
+for vocab_level in range(1, 7):
+    for word_index, (word, meaning, example) in enumerate(DET_WORD_BANKS[vocab_level], start=1):
+        for card_index, (card_type, builder) in enumerate(DET_VOCAB_CARD_TYPES, start=1):
+            front, back, card_example = builder(word, meaning, example)
+            DET_VOCABULARY.append({
+                "key": f"V{vocab_level}-{word_index:02d}-{card_index:02d}",
+                "level": vocab_level,
+                "word": word,
+                "meaning": meaning,
+                "example": card_example,
+                "front": front,
+                "back": back,
+                "card_type": card_type,
+                "word_number": word_index,
+                "card_number": card_index,
+            })
+
+DET_VOCABULARY_BY_LEVEL = {
+    level: [item for item in DET_VOCABULARY if item["level"] == level]
+    for level in DET_LEVELS
+}
 
 def det_level_progress(student_id, level):
     rows = DETPracticeProgress.query.filter_by(student_id=student_id, level=level).all()
@@ -995,15 +1021,37 @@ def get_det_item(level, item_key):
 def get_vocab_item(vocab_key):
     return next((item for item in DET_VOCABULARY if item["key"] == vocab_key), None)
 
-def vocab_due_rows(student_id):
+def vocab_due_rows(student_id, level=None):
     now = datetime.utcnow()
     progress = {row.vocab_key: row for row in DETVocabularyProgress.query.filter_by(student_id=student_id).all()}
+    source = DET_VOCABULARY_BY_LEVEL.get(level, []) if level else DET_VOCABULARY
     due = []
-    for item in DET_VOCABULARY:
+    for item in source:
         row = progress.get(item["key"])
         if row is None or row.next_review_at is None or row.next_review_at <= now:
             due.append((item, row))
     return due
+
+def vocab_level_summary(student_id, level):
+    deck = DET_VOCABULARY_BY_LEVEL[level]
+    keys = {item["key"] for item in deck}
+    rows = DETVocabularyProgress.query.filter(
+        DETVocabularyProgress.student_id == student_id,
+        DETVocabularyProgress.vocab_key.in_(keys)
+    ).all()
+    learned = sum(1 for row in rows if row.box >= 4)
+    due = vocab_due_rows(student_id, level)
+    reviewed = sum(1 for row in rows if (row.reviews or 0) > 0)
+    return {
+        "level": level,
+        "meta": DET_LEVELS[level],
+        "total": len(deck),
+        "learned": learned,
+        "reviewed": reviewed,
+        "due": len(due),
+        "next_card": due[0][0] if due else None,
+        "percent": round((learned / len(deck)) * 100) if deck else 0,
+    }
 
 ESSAY_WRITESHOPS = [
     {
@@ -2234,16 +2282,46 @@ def det_vocabulary():
     if not user or user.role != "student":
         return redirect(url_for("login"))
 
-    due = vocab_due_rows(user.id)
-    progress_rows = DETVocabularyProgress.query.filter_by(student_id=user.id).all()
-    learned = sum(1 for row in progress_rows if row.box >= 4)
+    decks = [vocab_level_summary(user.id, level) for level in DET_LEVELS]
     return render_template(
         "det_vocabulary.html",
-        due_count=len(due),
-        learned=learned,
-        total=len(DET_VOCABULARY),
-        next_card=due[0][0] if due else None,
+        decks=decks,
+        total_cards=len(DET_VOCABULARY),
+        total_due=sum(deck["due"] for deck in decks),
+        total_learned=sum(deck["learned"] for deck in decks),
     )
+
+
+@app.route("/det-vocabulary/level/<int:level>")
+def det_vocabulary_level(level):
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+    if level not in DET_LEVELS:
+        return redirect(url_for("det_vocabulary"))
+
+    summary = vocab_level_summary(user.id, level)
+    return render_template(
+        "det_vocabulary_level.html",
+        level=level,
+        summary=summary,
+        level_meta=DET_LEVELS[level],
+    )
+
+
+@app.route("/det-vocabulary/level/<int:level>/start")
+def det_vocabulary_start(level):
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+    if level not in DET_LEVELS:
+        return redirect(url_for("det_vocabulary"))
+
+    due = vocab_due_rows(user.id, level)
+    if not due:
+        flash(f"Level {level} vocabulary is caught up for now.", "success")
+        return redirect(url_for("det_vocabulary_level", level=level))
+    return redirect(url_for("det_vocab_card", vocab_key=due[0][0]["key"]))
 
 
 @app.route("/det-vocabulary/<vocab_key>", methods=["GET", "POST"])
@@ -2256,6 +2334,7 @@ def det_vocab_card(vocab_key):
     if not item:
         return redirect(url_for("det_vocabulary"))
 
+    level = item["level"]
     row = DETVocabularyProgress.query.filter_by(student_id=user.id, vocab_key=vocab_key).first()
     if not row:
         row = DETVocabularyProgress(student_id=user.id, vocab_key=vocab_key, next_review_at=datetime.utcnow())
@@ -2266,30 +2345,31 @@ def det_vocab_card(vocab_key):
         rating = request.form.get("rating", "good")
         intervals = {
             "again": (0, 0),
-            "hard": (max(1, row.box), 1),
-            "good": (min(5, row.box + 1), [1, 3, 7, 14, 30, 60][min(5, row.box + 1)]),
-            "easy": (min(5, row.box + 2), [1, 3, 7, 14, 30, 60][min(5, row.box + 2)]),
+            "hard": (max(1, row.box or 0), 1),
+            "good": (min(5, (row.box or 0) + 1), [1, 3, 7, 14, 30, 60][min(5, (row.box or 0) + 1)]),
+            "easy": (min(5, (row.box or 0) + 2), [1, 3, 7, 14, 30, 60][min(5, (row.box or 0) + 2)]),
         }
         new_box, days = intervals.get(rating, intervals["good"])
         row.box = new_box
-        row.reviews += 1
+        row.reviews = (row.reviews or 0) + 1
         if rating in {"good", "easy"}:
-            row.correct_reviews += 1
+            row.correct_reviews = (row.correct_reviews or 0) + 1
         row.last_reviewed_at = datetime.utcnow()
         row.next_review_at = datetime.utcnow() + timedelta(days=days)
         db.session.commit()
 
-        due = vocab_due_rows(user.id)
+        due = vocab_due_rows(user.id, level)
         if due:
             return redirect(url_for("det_vocab_card", vocab_key=due[0][0]["key"]))
-        flash("Vocabulary review complete for now.", "success")
-        return redirect(url_for("det_vocabulary"))
+        flash(f"Level {level} vocabulary review complete for now.", "success")
+        return redirect(url_for("det_vocabulary_level", level=level))
 
     return render_template(
         "det_vocab_card.html",
         item=item,
         progress=row,
-        remaining=len(vocab_due_rows(user.id)),
+        remaining=len(vocab_due_rows(user.id, level)),
+        level_meta=DET_LEVELS[level],
     )
 
 

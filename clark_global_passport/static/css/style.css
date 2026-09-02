@@ -853,3 +853,16 @@ th{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.
 .det-map-node.locked span{
     font-size:1rem;
 }
+
+
+/* Level vocabulary decks v10.8.4 */
+.vocab-overview-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.vocab-overview-stats>div{background:#fff;border:1px solid rgba(15,39,70,.08);border-radius:16px;padding:17px;display:grid}
+.vocab-overview-stats strong{font-size:1.7rem;color:#102b50}.vocab-overview-stats span{font-size:.78rem;color:#68737e}
+.vocab-deck-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.vocab-deck-card{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid rgba(15,39,70,.09);border-radius:18px;padding:18px;transition:.18s ease}
+.vocab-deck-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(15,39,70,.08)}
+.vocab-deck-card h2{margin:.2rem 0}.vocab-deck-card p{margin:.35rem 0 10px}.deck-open{display:block;margin-top:13px;font-weight:850;color:#23755a}
+.vocab-method-note{margin-top:18px}.vocab-card-type{text-align:center;text-transform:uppercase;letter-spacing:.09em;font-size:.72rem;font-weight:900;color:#68737e;margin-bottom:12px}
+@media(max-width:850px){.vocab-deck-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.vocab-deck-grid,.vocab-overview-stats{grid-template-columns:1fr}}

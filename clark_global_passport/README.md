@@ -424,3 +424,13 @@ The IELTS ranges are internal course labels and are not presented as an official
 - Fixes the `/essay-lab` POST Internal Server Error.
 - Adds the missing Python `re` import used by rich-text essay validation.
 - Word-style essay submissions can now be validated and saved normally.
+
+
+## v10.8.4 - Level-Specific Vocabulary SRS
+
+- Six separate spaced-repetition vocabulary decks, one for every DET course level.
+- 200 learning cards per level / 1,200 cards total.
+- All six decks are immediately selectable, matching the open DET level-choice model.
+- Reviews remain inside the selected level instead of mixing levels.
+- Each level uses 20 curated core words with 10 retrieval/application card types per word.
+- Existing SRS progress model is preserved; no database migration is required.
