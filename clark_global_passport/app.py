@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, make_response, Response
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect, text as sql_text
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import csv
@@ -28,6 +29,8 @@ COMPETENCIES = [
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
+    first_name = db.Column(db.String(80), nullable=True)
+    last_name = db.Column(db.String(80), nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="student")
@@ -412,14 +415,16 @@ def index():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        name = request.form.get("name", "").strip()
+        first_name = request.form.get("first_name", "").strip()
+        last_name = request.form.get("last_name", "").strip()
+        name = f"{first_name} {last_name}".strip()
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
         role = request.form.get("role", "student")
         is_transfer = request.form.get("is_transfer") == "on"
 
-        if not name or not email or not password:
+        if not first_name or not last_name or not email or not password:
             flash("Please complete all required fields.", "error")
             return redirect(url_for("register"))
 
@@ -459,6 +464,8 @@ def register():
 
         new_user = User(
             name=name,
+            first_name=first_name,
+            last_name=last_name,
             email=email,
             role=role,
             year_level=year_level,
@@ -1253,6 +1260,116 @@ def teacher_student_restore(student_id):
     return redirect(url_for("teacher_students"))
 
 
+def delete_user_account_records(target_user):
+    """Delete a user's account and records while respecting cross-user foreign keys."""
+    if target_user.role == "student":
+        submission_ids = [
+            row[0] for row in
+            db.session.query(EssaySubmission.id).filter(
+                EssaySubmission.student_id == target_user.id
+            ).all()
+        ]
+        if submission_ids:
+            EssayFeedback.query.filter(
+                EssayFeedback.submission_id.in_(submission_ids)
+            ).delete(synchronize_session=False)
+
+        for model in [
+            StudentAcademicProfile,
+            CompetencyScore,
+            Reflection,
+            Project,
+            PortfolioItem,
+            EssaySubmission,
+            ConsultationEntry,
+            Year3Milestone,
+            DETRecord,
+            UniversityOption,
+            PromotionRequest,
+            ActivityLog,
+            TeacherNote,
+            FutureGoal,
+        ]:
+            model.query.filter_by(student_id=target_user.id).delete(
+                synchronize_session=False
+            )
+
+    elif target_user.role == "teacher":
+        # Detach students assigned to this teacher.
+        User.query.filter_by(adviser_id=target_user.id).update(
+            {"adviser_id": None},
+            synchronize_session=False,
+        )
+
+        # Keep student-owned history but remove/detach teacher references.
+        EssayFeedback.query.filter_by(teacher_id=target_user.id).delete(
+            synchronize_session=False
+        )
+        TeacherNote.query.filter_by(teacher_id=target_user.id).delete(
+            synchronize_session=False
+        )
+        ConsultationEntry.query.filter_by(adviser_id=target_user.id).delete(
+            synchronize_session=False
+        )
+        EssaySubmission.query.filter_by(reviewed_by=target_user.id).update(
+            {"reviewed_by": None},
+            synchronize_session=False
+        )
+        PromotionRequest.query.filter_by(reviewed_by=target_user.id).update(
+            {"reviewed_by": None},
+            synchronize_session=False
+        )
+        ActivityLog.query.filter_by(actor_id=target_user.id).update(
+            {"actor_id": None},
+            synchronize_session=False
+        )
+        AdminAuditLog.query.filter_by(actor_id=target_user.id).update(
+            {"actor_id": None},
+            synchronize_session=False
+        )
+
+    db.session.delete(target_user)
+
+
+@app.route("/account/delete", methods=["POST"])
+def delete_own_account():
+    user = current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    typed_email = request.form.get("typed_email", "").strip().lower()
+    final_confirmation = request.form.get("final_confirmation", "")
+
+    if final_confirmation != "DELETE" or typed_email != user.email.lower():
+        flash("Your account was not deleted. The final confirmation did not match.", "error")
+        destination = "teacher_dashboard" if user.role == "teacher" else "student_dashboard"
+        return redirect(url_for(destination))
+
+    target_role = user.role
+    delete_user_account_records(user)
+    db.session.flush()
+
+    # Avoid leaving pending teachers permanently locked out if the last
+    # active teacher deletes their own account.
+    if target_role == "teacher":
+        active_teacher_exists = User.query.filter_by(
+            role="teacher",
+            account_status="active"
+        ).first()
+        if not active_teacher_exists:
+            pending_teacher = User.query.filter_by(
+                role="teacher",
+                account_status="pending"
+            ).order_by(User.created_at.asc(), User.id.asc()).first()
+            if pending_teacher:
+                pending_teacher.account_status = "active"
+
+    db.session.commit()
+    session.clear()
+    flash("Your Clark Global Passport account was permanently deleted.", "success")
+    return redirect(url_for("login"))
+
+
 @app.route("/teacher/students/<int:student_id>/delete", methods=["POST"])
 def teacher_student_delete(student_id):
     user = current_user()
@@ -1694,6 +1811,35 @@ def teacher_update_competency(student_id):
     return redirect(url_for("teacher_student", student_id=student.id))
 
 
+def ensure_user_name_columns():
+    """Add first_name and last_name to existing databases without requiring Alembic."""
+    inspector = inspect(db.engine)
+    columns = {column["name"] for column in inspector.get_columns("user")}
+
+    if "first_name" not in columns:
+        db.session.execute(sql_text('ALTER TABLE "user" ADD COLUMN first_name VARCHAR(80)'))
+    if "last_name" not in columns:
+        db.session.execute(sql_text('ALTER TABLE "user" ADD COLUMN last_name VARCHAR(80)'))
+
+    db.session.commit()
+
+    # Best-effort backfill for older accounts that only have a combined name.
+    users = User.query.filter(
+        (User.first_name.is_(None)) | (User.last_name.is_(None))
+    ).all()
+    changed = False
+    for user in users:
+        parts = (user.name or "").strip().split()
+        if not user.first_name:
+            user.first_name = parts[0] if parts else ""
+            changed = True
+        if not user.last_name:
+            user.last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+            changed = True
+    if changed:
+        db.session.commit()
+
+
 def reset_all_students_once():
     """One-time v10.1.3 reset: remove every student account and student-linked record."""
     migration_key = "v10.1.3_reset_all_students"
@@ -1837,6 +1983,7 @@ def remove_legacy_demo_accounts_and_bootstrap():
 
 with app.app_context():
     db.create_all()
+    ensure_user_name_columns()
     reset_all_students_once()
     remove_legacy_demo_accounts_and_bootstrap()
 

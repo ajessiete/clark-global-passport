@@ -167,4 +167,21 @@
         <a class="button secondary" href="{{ url_for('portfolio') }}">Open Portfolio</a>
     </section>
 </div>
+
+<section class="card account-danger-zone">
+    <div>
+        <p class="eyebrow">ACCOUNT</p>
+        <h2>Account Settings</h2>
+        <p class="muted">Deleting your account is permanent and cannot be undone.</p>
+    </div>
+    <form method="post"
+          action="{{ url_for('delete_own_account') }}"
+          class="delete-own-account-form"
+          data-email="{{ current_user.email }}">
+        <input type="hidden" name="typed_email" value="">
+        <input type="hidden" name="final_confirmation" value="">
+        <button type="submit" class="danger-button">Delete My Account</button>
+    </form>
+</section>
+
 {% endblock %}

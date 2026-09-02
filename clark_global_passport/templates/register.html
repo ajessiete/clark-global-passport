@@ -9,8 +9,16 @@
         <p class="muted">Join the three-year international university preparation pathway.</p>
 
         <form method="post" class="form-stack" id="registerForm">
-            <label>Full name</label>
-            <input name="name" required placeholder="e.g. Yuki Tanaka">
+            <div class="name-fields">
+                <label>
+                    <span>Last Name</span>
+                    <input name="last_name" required autocomplete="family-name" placeholder="e.g. Tanaka">
+                </label>
+                <label>
+                    <span>First Name</span>
+                    <input name="first_name" required autocomplete="given-name" placeholder="e.g. Yuki">
+                </label>
+            </div>
 
             <label>Email</label>
             <input type="email" name="email" required placeholder="name@example.com">

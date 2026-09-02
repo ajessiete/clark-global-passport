@@ -652,3 +652,31 @@ th{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.
     color:#667085;
     vertical-align:middle
 }
+
+
+/* Account settings v10.2 */
+.name-fields{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px
+}
+.name-fields label{
+    display:grid;
+    gap:6px
+}
+.account-danger-zone{
+    margin-top:22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:20px;
+    border-color:#efcaca;
+    background:#fffafa
+}
+.account-danger-zone h2{margin:.15rem 0}
+.account-danger-zone p:last-child{margin-bottom:0}
+.account-danger-zone form{margin:0}
+@media(max-width:650px){
+    .name-fields{grid-template-columns:1fr}
+    .account-danger-zone{align-items:stretch;flex-direction:column}
+}

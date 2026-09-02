@@ -280,3 +280,22 @@ On first startup after deploying v10.1.3:
 - records a one-time migration marker so the reset does not repeat on later restarts
 
 New students created after this reset are not deleted.
+
+
+## v10.2 — Separate Names + Self-Service Account Deletion
+
+Registration:
+- First Name and Last Name are collected separately.
+- Existing displays continue using the combined `name` field for compatibility.
+- Existing databases are upgraded automatically with `first_name` and `last_name` columns.
+
+Account settings:
+- Student and teacher dashboards now include a Delete My Account option.
+- Confirmation 1 explains that deletion is permanent.
+- Confirmation 2 requires typing the account email exactly.
+- The server independently validates both confirmation fields before deletion.
+- Student deletion removes student-linked records.
+- Teacher deletion safely detaches/removes teacher-owned references.
+- If the last active teacher deletes their account and a pending teacher exists, the earliest pending teacher is activated.
+
+Prototype note: formal CSRF protection should still be added before production use with real student data.
