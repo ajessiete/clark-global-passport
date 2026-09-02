@@ -43,7 +43,7 @@
   {% endif %}
 
   <div class="milestone-list">
-  {% for item in year_progress.items %}
+  {% for item in year_progress.milestones %}
     <form method="post" action="{{ url_for('update_year_milestone', year=year_progress.year, milestone_key=item.key) }}" class="milestone-row {% if item.status == 'complete' %}is-complete{% endif %}">
       <span class="milestone-state">{% if item.status == 'complete' %}✓{% elif item.status == 'in_progress' %}◐{% else %}○{% endif %}</span>
       <span class="milestone-label">{{ item.label }}</span>

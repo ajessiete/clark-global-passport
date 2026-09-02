@@ -1913,12 +1913,12 @@ def build_year_progress(student):
                           "status": row.status if row else "not_started"})
         complete = sum(i["status"] == "complete" for i in items)
         years.append({"year": year, "title": definition["title"], "goal": definition["goal"],
-                      "items": items, "complete": complete, "total": len(items),
+                      "milestones": items, "complete": complete, "total": len(items),
                       "percent": round(complete / len(items) * 100) if items else 0})
     current = years[-1]
     carried = []
     for yd in years[:-1]:
-        for item in yd["items"]:
+        for item in yd["milestones"]:
             if item["status"] != "complete":
                 carried.append({**item, "from_year": yd["year"], "from_title": yd["title"]})
     return current, carried, years

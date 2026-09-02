@@ -303,3 +303,10 @@ Prototype note: formal CSRF protection should still be added before production u
 
 ## v10.3 — Three-Year Global Passport Progress
 Replaces student-facing Global Competencies with concrete Year 1–3 milestone tracking. Unfinished previous-year milestones automatically carry forward after promotion. Milestones remain Not Started, In Progress, or Complete; promotion does not auto-complete them.
+
+
+## v10.3.1 — Year Progress Render Fix
+
+Fixes the student dashboard Internal Server Error introduced in v10.3.
+The progress dictionary field `items` was renamed to `milestones` because
+Jinja interpreted `year_progress.items` as the dictionary `.items()` method.
