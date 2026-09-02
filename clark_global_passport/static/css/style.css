@@ -680,10 +680,7 @@ th{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.
     .name-fields{grid-template-columns:1fr}
     .account-danger-zone{align-items:stretch;flex-direction:column}
 }
-/* Improve year banner headline contrast */
-.year-hero h1,
-.year-hero h2,
-.year-banner h1,
-.year-banner h2 {
-    color: #ffffff;
+/* Year pathway banner headline */
+.pathway-hero h1 {
+    color: #ffffff !important;
 }
