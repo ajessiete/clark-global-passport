@@ -28,15 +28,13 @@
     <div class="carryover-title"><strong>↪ Carried Over</strong><small>Finish these goals from previous years.</small></div>
     <div class="milestone-list">
     {% for item in carried_over_milestones %}
-      <form method="post" action="{{ url_for('update_year_milestone', year=item.from_year, milestone_key=item.key) }}" class="milestone-row carried-row">
+      <div class="milestone-row carried-row">
         <span class="year-tag">YEAR {{ item.from_year }}</span>
         <span class="milestone-label">{{ item.label }}</span>
-        <select name="status" onchange="this.form.submit()">
-          <option value="not_started" {% if item.status == 'not_started' %}selected{% endif %}>Not Started</option>
-          <option value="in_progress" {% if item.status == 'in_progress' %}selected{% endif %}>In Progress</option>
-          <option value="complete" {% if item.status == 'complete' %}selected{% endif %}>Complete</option>
-        </select>
-      </form>
+        <span class="status-pill status-{{ item.status|replace('_','-') }}">
+          {% if item.status == 'in_progress' %}In Progress{% else %}Not Started{% endif %}
+        </span>
+      </div>
     {% endfor %}
     </div>
   </div>
@@ -44,35 +42,18 @@
 
   <div class="milestone-list">
   {% for item in year_progress.milestones %}
-    <form method="post" action="{{ url_for('update_year_milestone', year=year_progress.year, milestone_key=item.key) }}" class="milestone-row {% if item.status == 'complete' %}is-complete{% endif %}">
+    <div class="milestone-row {% if item.status == 'complete' %}is-complete{% endif %}">
       <span class="milestone-state">{% if item.status == 'complete' %}✓{% elif item.status == 'in_progress' %}◐{% else %}○{% endif %}</span>
       <span class="milestone-label">{{ item.label }}</span>
-      <select name="status" onchange="this.form.submit()">
-        <option value="not_started" {% if item.status == 'not_started' %}selected{% endif %}>Not Started</option>
-        <option value="in_progress" {% if item.status == 'in_progress' %}selected{% endif %}>In Progress</option>
-        <option value="complete" {% if item.status == 'complete' %}selected{% endif %}>Complete</option>
-      </select>
-    </form>
+      <span class="status-pill status-{{ item.status|replace('_','-') }}">
+        {% if item.status == 'complete' %}Complete{% elif item.status == 'in_progress' %}In Progress{% else %}Not Started{% endif %}
+      </span>
+    </div>
   {% endfor %}
   </div>
 </section>
 
 </div>
 
-<section class="card account-danger-zone">
-    <div>
-        <p class="eyebrow">ACCOUNT</p>
-        <h2>Account Settings</h2>
-        <p class="muted">Deleting your account is permanent and cannot be undone.</p>
-    </div>
-    <form method="post"
-          action="{{ url_for('delete_own_account') }}"
-          class="delete-own-account-form"
-          data-email="{{ current_user.email }}">
-        <input type="hidden" name="typed_email" value="">
-        <input type="hidden" name="final_confirmation" value="">
-        <button type="submit" class="danger-button">Delete My Account</button>
-    </form>
-</section>
 
 {% endblock %}

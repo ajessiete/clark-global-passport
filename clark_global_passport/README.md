@@ -310,3 +310,16 @@ Replaces student-facing Global Competencies with concrete Year 1–3 milestone t
 Fixes the student dashboard Internal Server Error introduced in v10.3.
 The progress dictionary field `items` was renamed to `milestones` because
 Jinja interpreted `year_progress.items` as the dictionary `.items()` method.
+
+
+## v10.4 — Teacher-Controlled Progress
+
+- Students can see Year Progress but cannot change milestone statuses.
+- Student dashboards no longer show Delete My Account.
+- Self-service account deletion is restricted to teachers.
+- Teachers control yearly milestones from each student's adviser/profile page.
+- Teacher choices are Not Started, In Progress, or Complete.
+- Marking Complete immediately updates the student's progress percentage.
+- There is no resubmission workflow for yearly milestones.
+- Unfinished previous-year milestones remain in Carried Over until a teacher completes them.
+- The old teacher-side Competency Profile card has been replaced by Global Passport Progress.

@@ -100,20 +100,60 @@
     {% else %}<p class="muted">No DET record yet.</p>{% endif %}
 </section>
 
-<section class="card">
-    <p class="eyebrow">YEAR PROGRESS</p>
-    <h2>Competency Profile</h2>
-    {% for competency, score in scores.items() %}
-    <form method="post" action="{{ url_for('teacher_update_competency', student_id=student.id) }}" class="teacher-skill">
-        <input type="hidden" name="competency" value="{{ competency }}">
+<section class="card teacher-year-progress-card">
+    <div class="section-heading">
         <div>
-            <strong>{{ competency }}</strong>
-            <div class="progress"><div class="progress-fill" style="width:{{ score * 10 }}%"></div></div>
+            <p class="eyebrow">GLOBAL PASSPORT PROGRESS</p>
+            <h2>Year {{ year_progress.year }} Progress</h2>
+            <p class="muted">{{ year_progress.goal }}</p>
         </div>
-        <input type="number" min="1" max="10" name="score" value="{{ score }}">
-        <button class="small secondary">Save</button>
-    </form>
+        <strong>{{ year_progress.complete }} / {{ year_progress.total }} complete</strong>
+    </div>
+
+    <div class="passport-progress-track">
+        <div class="passport-progress-fill" style="width: {{ year_progress.percent }}%"></div>
+    </div>
+    <p class="progress-percent">{{ year_progress.percent }}% complete</p>
+
+    {% if carried_over_milestones %}
+    <div class="carryover-panel">
+        <div class="carryover-title">
+            <strong>↪ Carried Over</strong>
+            <small>Unfinished goals from previous years remain here until you mark them complete.</small>
+        </div>
+        <div class="milestone-list">
+        {% for item in carried_over_milestones %}
+            <form method="post"
+                  action="{{ url_for('teacher_update_year_milestone', student_id=student.id, year=item.from_year, milestone_key=item.key) }}"
+                  class="milestone-row carried-row">
+                <span class="year-tag">YEAR {{ item.from_year }}</span>
+                <span class="milestone-label">{{ item.label }}</span>
+                <div class="teacher-milestone-actions">
+                    <button name="status" value="not_started" class="small secondary {% if item.status == 'not_started' %}selected-status{% endif %}">Not Started</button>
+                    <button name="status" value="in_progress" class="small secondary {% if item.status == 'in_progress' %}selected-status{% endif %}">In Progress</button>
+                    <button name="status" value="complete" class="small {% if item.status == 'complete' %}selected-status{% endif %}">✓ Complete</button>
+                </div>
+            </form>
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="milestone-list">
+    {% for item in year_progress.milestones %}
+        <form method="post"
+              action="{{ url_for('teacher_update_year_milestone', student_id=student.id, year=year_progress.year, milestone_key=item.key) }}"
+              class="milestone-row teacher-milestone-row {% if item.status == 'complete' %}is-complete{% endif %}">
+            <span class="milestone-state">{% if item.status == 'complete' %}✓{% elif item.status == 'in_progress' %}◐{% else %}○{% endif %}</span>
+            <span class="milestone-label">{{ item.label }}</span>
+            <div class="teacher-milestone-actions">
+                <button name="status" value="not_started" class="small secondary {% if item.status == 'not_started' %}selected-status{% endif %}">Not Started</button>
+                <button name="status" value="in_progress" class="small secondary {% if item.status == 'in_progress' %}selected-status{% endif %}">In Progress</button>
+                <button name="status" value="complete" class="small {% if item.status == 'complete' %}selected-status{% endif %}">✓ Complete</button>
+            </div>
+        </form>
     {% endfor %}
+    </div>
 </section>
 </div>
 

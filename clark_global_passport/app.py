@@ -573,26 +573,39 @@ def student_dashboard():
         milestones=ensure_year3_milestones(user.id) if user.year_level == 3 else [],
     )
 
-@app.route("/student/year-progress/<int:year>/<milestone_key>", methods=["POST"])
-def update_year_milestone(year, milestone_key):
-    user = current_user()
-    if not user or user.role != "student":
+@app.route("/teacher/student/<int:student_id>/year-progress/<int:year>/<milestone_key>", methods=["POST"])
+def teacher_update_year_milestone(student_id, year, milestone_key):
+    teacher = current_user()
+    if not teacher or teacher.role != "teacher":
         return redirect(url_for("login"))
-    current_year = max(1, min(int(user.year_level or 1), 3))
+
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+    current_year = max(1, min(int(student.year_level or 1), 3))
     valid = YEAR_MILESTONE_DEFINITIONS.get(year)
+
     if not valid or year > current_year or milestone_key not in {k for k, _ in valid["milestones"]}:
         flash("That milestone is not available.", "error")
-        return redirect(url_for("student_dashboard"))
-    ensure_year_milestones(user)
-    milestone = YearMilestone.query.filter_by(student_id=user.id, year_level=year,
-                                              milestone_key=milestone_key).first_or_404()
+        return redirect(url_for("teacher_student", student_id=student.id))
+
+    ensure_year_milestones(student)
+    milestone = YearMilestone.query.filter_by(
+        student_id=student.id,
+        year_level=year,
+        milestone_key=milestone_key
+    ).first_or_404()
+
     status = request.form.get("status", "not_started")
     if status not in {"not_started", "in_progress", "complete"}:
         status = "not_started"
+
     milestone.status = status
     milestone.completed_at = datetime.utcnow() if status == "complete" else None
+    milestone.updated_at = datetime.utcnow()
     db.session.commit()
-    return redirect(url_for("student_dashboard"))
+
+    flash("Student year progress updated.", "success")
+    return redirect(url_for("teacher_student", student_id=student.id))
+
 
 @app.route("/reflections", methods=["GET", "POST"])
 def reflections():
@@ -1374,6 +1387,9 @@ def delete_own_account():
     user = current_user()
     if not user:
         return redirect(url_for("login"))
+    if user.role != "teacher":
+        flash("Only teacher accounts can be deleted from the dashboard.", "error")
+        return redirect(url_for("student_dashboard"))
 
     typed_email = request.form.get("typed_email", "").strip().lower()
     final_confirmation = request.form.get("final_confirmation", "")
@@ -1584,10 +1600,14 @@ def teacher_student(student_id):
     adviser = db.session.get(User, student.adviser_id) if student.adviser_id else None
     consultations = ConsultationEntry.query.filter_by(student_id=student.id).order_by(ConsultationEntry.created_at.desc()).all()
     milestones = ensure_year3_milestones(student.id) if student.year_level == 3 else []
+    year_progress, carried_over_milestones, all_year_progress = build_year_progress(student)
 
     return render_template(
         "teacher_student.html",
         student=student,
+        year_progress=year_progress,
+        carried_over_milestones=carried_over_milestones,
+        all_year_progress=all_year_progress,
         academic_profile=get_academic_profile(student.id),
         eiken_levels=EIKEN_LEVELS,
         scores=get_scores(student),
