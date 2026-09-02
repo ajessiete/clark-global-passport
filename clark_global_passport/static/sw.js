@@ -1,4 +1,4 @@
-const CACHE_NAME = "clark-global-v9-shell";
+const CACHE_NAME = "clark-global-v10-1-1";
 const OFFLINE_URL = "/offline";
 const SHELL = [
   OFFLINE_URL,
@@ -33,7 +33,22 @@ self.addEventListener("fetch", event => {
 
   if (request.method !== "GET") return;
 
-  // Static assets: cache-first.
+  // JS/CSS: network-first so deployed updates are not trapped behind an old PWA cache.
+  if (
+    url.origin === self.location.origin &&
+    (url.pathname.endsWith(".js") || url.pathname.endsWith(".css"))
+  ) {
+    event.respondWith(
+      fetch(request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        return response;
+      }).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Other static assets such as icons: cache-first.
   if (url.origin === self.location.origin && url.pathname.startsWith("/static/")) {
     event.respondWith(
       caches.match(request).then(cached => cached || fetch(request).then(response => {

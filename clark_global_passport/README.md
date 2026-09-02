@@ -244,3 +244,13 @@ Student Overview now includes safer account lifecycle controls:
 - AdminAuditLog keeps the deleting/archiving teacher, action, target name/email snapshot, and timestamp
 
 For real school deployment, CSRF protection and a formal retention/deletion policy should still be added before using permanent delete with real student data.
+
+
+## v10.1.1 — PWA cache fix
+
+Fixes Student Overview actions being served from an older cached JavaScript file.
+- service worker cache version bumped
+- JS/CSS now use network-first caching
+- Student Overview JavaScript explicitly cache-busted
+- shared PWA JavaScript/CSS explicitly cache-busted
+- service worker registration URL versioned
