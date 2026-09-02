@@ -1,9 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, make_response, Response
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, send_file, make_response, Response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text as sql_text
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from html.parser import HTMLParser
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, KeepTogether
+from reportlab.lib.utils import ImageReader
 import csv
 import io
 import os
@@ -54,6 +61,19 @@ class StudentAcademicProfile(db.Model):
     student_number = db.Column(db.String(50), default="")
     homeroom = db.Column(db.String(80), default="")
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class StudentResumeProfile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False)
+    headline = db.Column(db.String(180), default="")
+    summary = db.Column(db.Text, default="")
+    skills = db.Column(db.Text, default="")
+    languages = db.Column(db.Text, default="")
+    interests = db.Column(db.Text, default="")
+    photo_data = db.Column(db.LargeBinary, nullable=True)
+    photo_mimetype = db.Column(db.String(50), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 
 class CompetencyScore(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -297,6 +317,284 @@ EIKEN_LEVELS = [
     "Pre-1",
     "1",
 ]
+
+def get_resume_profile(student_id):
+    profile = StudentResumeProfile.query.filter_by(student_id=student_id).first()
+    if not profile:
+        profile = StudentResumeProfile(student_id=student_id)
+        db.session.add(profile)
+        db.session.commit()
+    return profile
+
+def split_resume_list(value):
+    if not value:
+        return []
+    parts = re.split(r"[\n,;]+", value)
+    return [part.strip() for part in parts if part.strip()]
+
+def build_student_resume_data(student):
+    profile = get_resume_profile(student.id)
+    academic = get_academic_profile(student.id)
+
+    portfolio_items = PortfolioItem.query.filter_by(student_id=student.id).order_by(
+        PortfolioItem.created_at.desc()
+    ).all()
+    projects = Project.query.filter_by(student_id=student.id).order_by(
+        Project.updated_at.desc()
+    ).all()
+    det_records = DETRecord.query.filter_by(student_id=student.id).order_by(
+        DETRecord.created_at.desc()
+    ).all()
+    official_det = next(
+        (row for row in det_records if (row.record_type or "").lower() == "official"),
+        None
+    )
+    latest_det = det_records[0] if det_records else None
+
+    year_rows = YearMilestone.query.filter_by(student_id=student.id).all()
+    completed_year_goals = []
+    for row in year_rows:
+        if row.status != "complete":
+            continue
+        definition = YEAR_MILESTONE_DEFINITIONS.get(row.year_level, {})
+        label = next(
+            (label for key, label in definition.get("milestones", []) if key == row.milestone_key),
+            row.milestone_key.replace("_", " ").title()
+        )
+        completed_year_goals.append({
+            "year": row.year_level,
+            "label": label,
+            "completed_at": row.completed_at,
+        })
+
+    workshop_rows = EssayWorkshopProgress.query.filter_by(student_id=student.id).all()
+    approved_writeshops = []
+    for row in workshop_rows:
+        if workshop_review_state(row) == "Approved":
+            workshop = get_writeshop(row.workshop_key)
+            if workshop:
+                approved_writeshops.append(workshop)
+
+    essay_submissions = EssaySubmission.query.filter_by(student_id=student.id).order_by(
+        EssaySubmission.submitted_at.desc()
+    ).all()
+    approved_essay_stages = []
+    seen_stages = set()
+    for submission in essay_submissions:
+        if submission.status == "Approved" and submission.stage not in seen_stages:
+            approved_essay_stages.append(submission)
+            seen_stages.add(submission.stage)
+
+    universities = UniversityOption.query.filter_by(student_id=student.id).order_by(
+        UniversityOption.created_at.desc()
+    ).all()
+    applications = [u for u in universities if u.applied or u.status == "Submitted"]
+
+    activities = ActivityLog.query.filter_by(student_id=student.id).order_by(
+        ActivityLog.created_at.desc()
+    ).limit(12).all()
+
+    det_levels = []
+    for level in DET_LEVELS:
+        progress = det_level_progress(student.id, level)
+        if progress["correct"] > 0:
+            det_levels.append({
+                "level": level,
+                "band": DET_LEVELS[level]["band"],
+                "correct": progress["correct"],
+                "percent": progress["percent"],
+            })
+
+    return {
+        "student": student,
+        "profile": profile,
+        "academic": academic,
+        "skills": split_resume_list(profile.skills),
+        "languages": split_resume_list(profile.languages),
+        "interests": split_resume_list(profile.interests),
+        "portfolio_items": portfolio_items,
+        "projects": projects,
+        "official_det": official_det,
+        "latest_det": latest_det,
+        "det_levels": det_levels,
+        "completed_year_goals": completed_year_goals,
+        "approved_writeshops": approved_writeshops,
+        "approved_essay_stages": approved_essay_stages,
+        "universities": universities,
+        "applications": applications,
+        "activities": activities,
+    }
+
+def can_view_student_profile(viewer, student):
+    return bool(
+        viewer and student and
+        (viewer.role == "teacher" or viewer.id == student.id)
+    )
+
+def build_student_resume_pdf(student):
+    data = build_student_resume_data(student)
+    profile = data["profile"]
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=17 * mm,
+        leftMargin=17 * mm,
+        topMargin=15 * mm,
+        bottomMargin=15 * mm,
+        title=f"{student.name} - Global Resume",
+        author="Clark Global Passport",
+    )
+
+    navy = colors.HexColor("#102B50")
+    green = colors.HexColor("#23755A")
+    pale = colors.HexColor("#F4F7F8")
+    muted = colors.HexColor("#5D6875")
+    line = colors.HexColor("#DDE4E9")
+
+    styles = getSampleStyleSheet()
+    name_style = ParagraphStyle(
+        "ResumeName", parent=styles["Heading1"], fontName="Helvetica-Bold",
+        fontSize=23, leading=25, textColor=navy, spaceAfter=3
+    )
+    headline_style = ParagraphStyle(
+        "ResumeHeadline", parent=styles["Normal"], fontName="Helvetica",
+        fontSize=10.5, leading=14, textColor=green, spaceAfter=6
+    )
+    section_style = ParagraphStyle(
+        "ResumeSection", parent=styles["Heading2"], fontName="Helvetica-Bold",
+        fontSize=10, leading=12, textColor=navy, spaceBefore=8, spaceAfter=5,
+        uppercase=True
+    )
+    body_style = ParagraphStyle(
+        "ResumeBody", parent=styles["Normal"], fontName="Helvetica",
+        fontSize=8.8, leading=12, textColor=colors.HexColor("#26323D")
+    )
+    small_style = ParagraphStyle(
+        "ResumeSmall", parent=body_style, fontSize=7.8, leading=10, textColor=muted
+    )
+    bullet_style = ParagraphStyle(
+        "ResumeBullet", parent=body_style, leftIndent=9, firstLineIndent=-6,
+        bulletIndent=1, spaceAfter=2
+    )
+
+    story = []
+
+    # Header with optional photo.
+    header_text = [
+        Paragraph(student.name, name_style),
+        Paragraph(profile.headline or f"Year {student.year_level} Student | Clark Global Passport", headline_style),
+        Paragraph(
+            f"Year {student.year_level}"
+            + (f" | {data['academic'].homeroom}" if data["academic"].homeroom else "")
+            + (f" | EIKEN {data['academic'].eiken_level}" if data["academic"].eiken_level else ""),
+            small_style
+        ),
+    ]
+    if profile.photo_data:
+        try:
+            photo_stream = io.BytesIO(profile.photo_data)
+            photo = RLImage(photo_stream, width=27*mm, height=27*mm)
+            photo.hAlign = "RIGHT"
+            header = Table([[header_text, photo]], colWidths=[145*mm, 28*mm])
+        except Exception:
+            header = Table([[header_text]], colWidths=[173*mm])
+    else:
+        header = Table([[header_text]], colWidths=[173*mm])
+
+    header.setStyle(TableStyle([
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("LINEBELOW", (0,0), (-1,-1), 1.2, navy),
+    ]))
+    story.append(header)
+
+    if profile.summary:
+        story.append(Paragraph("PROFILE", section_style))
+        story.append(Paragraph(profile.summary, body_style))
+
+    # Skills / languages / interests
+    chips = []
+    if data["skills"]:
+        chips.append(("Skills", ", ".join(data["skills"])))
+    if data["languages"]:
+        chips.append(("Languages", ", ".join(data["languages"])))
+    if data["interests"]:
+        chips.append(("Interests", ", ".join(data["interests"])))
+    if chips:
+        story.append(Paragraph("CORE PROFILE", section_style))
+        chip_rows = [[Paragraph(f"<b>{label}</b>", small_style), Paragraph(value, body_style)] for label, value in chips]
+        chip_table = Table(chip_rows, colWidths=[27*mm, 146*mm])
+        chip_table.setStyle(TableStyle([
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+            ("TOPPADDING", (0,0), (-1,-1), 3),
+        ]))
+        story.append(chip_table)
+
+    # Achievements
+    achievement_lines = []
+    for item in data["portfolio_items"][:10]:
+        achievement_lines.append(f"<b>{item.title}</b> - {item.category}: {item.description}")
+    for goal in data["completed_year_goals"][:8]:
+        achievement_lines.append(f"<b>Year {goal['year']} Global Passport</b> - {goal['label']}")
+    if achievement_lines:
+        story.append(Paragraph("ACHIEVEMENTS & EVIDENCE", section_style))
+        for line_text in achievement_lines:
+            story.append(Paragraph("• " + line_text, bullet_style))
+
+    # Academic / English development
+    story.append(Paragraph("ENGLISH & ACADEMIC DEVELOPMENT", section_style))
+    english_bits = []
+    if data["official_det"] and data["official_det"].score:
+        english_bits.append(f"Official DET: {data['official_det'].score}")
+    elif data["latest_det"] and data["latest_det"].score:
+        english_bits.append(f"Latest DET practice: {data['latest_det'].score}")
+    if data["academic"].eiken_level:
+        english_bits.append(f"EIKEN: {data['academic'].eiken_level}")
+    if data["det_levels"]:
+        highest = max(data["det_levels"], key=lambda x: x["level"])
+        english_bits.append(f"DET Learning Path: Level {highest['level']} ({highest['correct']}/100 mastered)")
+    if data["approved_writeshops"]:
+        english_bits.append(f"Essay Writeshops approved: {len(data['approved_writeshops'])}/8")
+    if data["approved_essay_stages"]:
+        english_bits.append("Approved essay stages: " + ", ".join(x.stage for x in reversed(data["approved_essay_stages"][:5])))
+    story.append(Paragraph(" | ".join(english_bits) if english_bits else "Progress is being built in Clark Global Passport.", body_style))
+
+    # Projects
+    if data["projects"]:
+        story.append(Paragraph("PROJECTS & INQUIRY", section_style))
+        for project in data["projects"][:6]:
+            story.append(KeepTogether([
+                Paragraph(f"<b>{project.title}</b> <font color='#5D6875'>({project.stage})</font>", body_style),
+                Paragraph(project.description or project.question, small_style),
+                Spacer(1, 3),
+            ]))
+
+    # University/application
+    if data["universities"]:
+        story.append(Paragraph("UNIVERSITY & FUTURE PLANNING", section_style))
+        for uni in data["universities"][:6]:
+            status = "Submitted" if (uni.applied or uni.status == "Submitted") else uni.status
+            line_text = f"<b>{uni.university}</b>"
+            if uni.program:
+                line_text += f" - {uni.program}"
+            if uni.country:
+                line_text += f" ({uni.country})"
+            line_text += f" | {status}"
+            story.append(Paragraph("• " + line_text, bullet_style))
+
+    story.append(Spacer(1, 7))
+    story.append(Paragraph(
+        "Generated from Clark Global Passport. Students should review this document before using it for formal applications.",
+        small_style
+    ))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
 
 def get_academic_profile(student_id):
     profile = StudentAcademicProfile.query.filter_by(student_id=student_id).first()
@@ -1300,6 +1598,106 @@ def update_project(project_id):
     flash("Project updated.", "success")
     return redirect(url_for("projects"))
 
+@app.route("/profile", methods=["GET", "POST"])
+def student_profile():
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+
+    profile = get_resume_profile(user.id)
+
+    if request.method == "POST":
+        profile.headline = request.form.get("headline", "").strip()[:180]
+        profile.summary = request.form.get("summary", "").strip()
+        profile.skills = request.form.get("skills", "").strip()
+        profile.languages = request.form.get("languages", "").strip()
+        profile.interests = request.form.get("interests", "").strip()
+
+        photo = request.files.get("photo")
+        if photo and photo.filename:
+            allowed = {"image/jpeg", "image/png"}
+            if photo.mimetype not in allowed:
+                flash("Profile photo must be a JPEG or PNG image.", "error")
+                return redirect(url_for("student_profile"))
+            photo_data = photo.read()
+            if len(photo_data) > 2 * 1024 * 1024:
+                flash("Profile photo must be 2 MB or smaller.", "error")
+                return redirect(url_for("student_profile"))
+            profile.photo_data = photo_data
+            profile.photo_mimetype = photo.mimetype
+
+        if request.form.get("remove_photo") == "1":
+            profile.photo_data = None
+            profile.photo_mimetype = None
+
+        db.session.commit()
+        flash("Profile updated.", "success")
+        return redirect(url_for("student_profile"))
+
+    return render_template(
+        "student_profile.html",
+        editable=True,
+        viewer=user,
+        **build_student_resume_data(user),
+    )
+
+
+@app.route("/student/<int:student_id>/profile")
+def view_student_profile(student_id):
+    viewer = current_user()
+    if not viewer:
+        return redirect(url_for("login"))
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+    if not can_view_student_profile(viewer, student):
+        return redirect(url_for("student_dashboard"))
+
+    return render_template(
+        "student_profile.html",
+        editable=(viewer.id == student.id and viewer.role == "student"),
+        viewer=viewer,
+        **build_student_resume_data(student),
+    )
+
+
+@app.route("/student/<int:student_id>/profile-photo")
+def student_profile_photo(student_id):
+    viewer = current_user()
+    if not viewer:
+        return redirect(url_for("login"))
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+    if not can_view_student_profile(viewer, student):
+        return Response(status=403)
+
+    profile = get_resume_profile(student.id)
+    if not profile.photo_data:
+        return Response(status=404)
+
+    return send_file(
+        io.BytesIO(profile.photo_data),
+        mimetype=profile.photo_mimetype or "image/jpeg",
+        max_age=0,
+    )
+
+
+@app.route("/student/<int:student_id>/profile.pdf")
+def student_profile_pdf(student_id):
+    viewer = current_user()
+    if not viewer:
+        return redirect(url_for("login"))
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+    if not can_view_student_profile(viewer, student):
+        return Response(status=403)
+
+    pdf_buffer = build_student_resume_pdf(student)
+    safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", student.name).strip("_") or "student"
+    return send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"{safe_name}_Global_Resume.pdf",
+    )
+
+
 @app.route("/portfolio", methods=["GET", "POST"])
 def portfolio():
     user = current_user()
@@ -2230,6 +2628,7 @@ def delete_user_account_records(target_user):
 
         for model in [
             StudentAcademicProfile,
+            StudentResumeProfile,
             EssayWorkshopProgress,
             DETPracticeProgress,
             DETVocabularyProgress,
@@ -2969,6 +3368,7 @@ def reset_all_students_once():
 
         for model in [
             StudentAcademicProfile,
+            StudentResumeProfile,
             EssayWorkshopProgress,
             DETPracticeProgress,
             DETVocabularyProgress,

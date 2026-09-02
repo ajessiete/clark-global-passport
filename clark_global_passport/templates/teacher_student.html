@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 <a class="back-button" href="{{ url_for('teacher_dashboard') }}">← Back</a>
-<div class="page-title">
-    <p class="eyebrow">STUDENT ADVISER VIEW</p>
-    <h1>{{ student.name }}</h1>
-    <p>Year {{ student.year_level }} • {{ pathway.label }} — {{ pathway.title }}</p>
+<div class="page-title teacher-student-title">
+    <div>
+        <p class="eyebrow">STUDENT ADVISER VIEW</p>
+        <h1>{{ student.name }}</h1>
+        <p>Year {{ student.year_level }} • {{ pathway.label }} — {{ pathway.title }}</p>
+    </div>
+    <a class="button secondary" href="{{ url_for('view_student_profile', student_id=student.id) }}">Open Global Profile →</a>
 </div>
 
 <section class="hero adviser-hero">

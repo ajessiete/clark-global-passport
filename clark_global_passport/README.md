@@ -386,3 +386,15 @@ Vocabulary:
 - Vocabulary review progress is stored separately for each student.
 
 The IELTS ranges are internal course labels and are not presented as an official DET-to-IELTS score conversion.
+
+
+## v10.8 - Student Global Profile / Resume
+
+- New chic resume-style Student Profile page.
+- Students can add a profile headline, About Me summary, skills, languages, interests, and a profile photo.
+- Profile photos are stored in the database rather than Render's temporary filesystem.
+- JPEG/PNG only, maximum 2 MB.
+- Profile automatically pulls Portfolio achievements, completed Global Passport milestones, projects, approved Essay Writeshops, approved Personal Essay stages, DET/EIKEN progress, university research/applications, and recent activity.
+- Teachers can open a student's Global Profile from the student adviser page.
+- Students and teachers can download the profile as an A4 PDF.
+- PDF generation is server-side using ReportLab.

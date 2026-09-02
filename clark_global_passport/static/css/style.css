@@ -807,3 +807,33 @@ th{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.
 .vocab-card-shell{max-width:700px;margin:0 auto}.vocab-study-card{text-align:center;padding:36px}.vocab-word{font-size:3rem;font-weight:900;margin:40px 0}.vocab-answer{margin-top:30px}.vocab-answer p{font-size:1.08rem}.srs-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:28px 0 12px}.srs-buttons button{margin:0}
 @media(max-width:850px){.det-level-mini-grid{grid-template-columns:repeat(3,1fr)}.det-level-card{grid-template-columns:54px 1fr}.det-level-card>div:last-child{grid-column:2}.det-theme-grid{grid-template-columns:1fr}.det-item-map{grid-template-columns:repeat(2,1fr);max-width:360px}.vocab-banner,.vocab-launch{align-items:stretch;flex-direction:column}}
 @media(max-width:520px){.det-level-mini-grid{grid-template-columns:repeat(2,1fr)}.srs-buttons{grid-template-columns:1fr 1fr}.vocab-word{font-size:2.2rem}.det-question-top{flex-wrap:wrap}}
+
+
+/* Global Resume v10.8 */
+.resume-actions{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:20px}
+.resume-actions h1{margin:.25rem 0}
+.resume-layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px;align-items:start}
+.resume-side{position:sticky;top:18px;padding:24px;border-radius:22px;background:#102b50;color:#fff}
+.resume-side h2{margin:14px 0 4px;font-size:1.6rem}.resume-headline{color:rgba(255,255,255,.8);line-height:1.45}
+.resume-photo-wrap{display:flex;justify-content:center}
+.resume-photo,.resume-photo-placeholder{width:150px;height:150px;border-radius:50%;object-fit:cover;border:5px solid rgba(255,255,255,.18)}
+.resume-photo-placeholder{display:grid;place-items:center;background:#fff;color:#102b50;font-size:3.4rem;font-weight:900}
+.resume-mini-meta{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0}.resume-mini-meta span{padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.1);font-size:.72rem;font-weight:800}
+.resume-side-section{padding-top:15px;margin-top:15px;border-top:1px solid rgba(255,255,255,.13)}.resume-side-section h3{font-size:.82rem;text-transform:uppercase;letter-spacing:.08em;margin:0 0 9px}
+.resume-tags{display:flex;flex-wrap:wrap;gap:6px}.resume-tags span{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.10);font-size:.76rem}
+.resume-paper{background:#fff;border:1px solid rgba(15,39,70,.09);border-radius:22px;padding:30px;box-shadow:0 12px 34px rgba(15,39,70,.06)}
+.resume-section{padding:4px 0 22px;margin-bottom:18px;border-bottom:1px solid rgba(15,39,70,.09)}.resume-section:last-child{border-bottom:0;margin-bottom:0}
+.resume-section h2{margin:.18rem 0 12px}.resume-summary{font-size:1.03rem;line-height:1.75;max-width:850px}
+.resume-count{display:grid;place-items:center;min-width:42px;height:42px;border-radius:50%;background:rgba(15,39,70,.07);font-weight:900}
+.resume-achievement-list{display:grid;gap:10px}.resume-achievement{display:grid;grid-template-columns:125px 1fr;gap:14px;padding:13px 0}.resume-achievement h3{margin:0 0 4px}.resume-achievement p{margin:0;color:#5d6875}
+.resume-milestone-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.resume-milestone{display:flex;gap:10px;padding:12px;border-radius:12px;background:rgba(46,125,90,.06)}.resume-milestone>strong{color:#23755a}.resume-milestone span{font-size:.7rem;font-weight:900;letter-spacing:.08em}.resume-milestone p{margin:2px 0 0}
+.resume-two-column{display:grid;grid-template-columns:1.2fr .8fr;gap:22px}.resume-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.resume-stat-row>div{padding:12px;border-radius:12px;background:rgba(15,39,70,.05);text-align:center}.resume-stat-row strong{display:block;font-size:1.25rem}.resume-stat-row span{font-size:.72rem;color:#65707b}
+.resume-level-list{display:grid;gap:6px;margin-top:10px}.resume-level-list div{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(15,39,70,.06)}
+.resume-simple-list{display:grid;gap:7px}.resume-simple-list>div{display:flex;gap:8px;align-items:center}.resume-simple-list p{margin:0}
+.resume-project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.resume-project-grid article{padding:14px;border-radius:14px;background:#f6f8fa}.resume-project-grid h3{margin:.2rem 0 5px}.resume-project-grid p{margin:0;color:#5d6875}
+.resume-university-list{display:grid;gap:8px}.resume-university-list>div{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid rgba(15,39,70,.07)}.resume-university-list>div>div{display:grid}.resume-university-list span{font-size:.8rem}
+.resume-activity-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.resume-activity-list>div{display:flex;gap:9px;padding:10px;border-radius:12px;background:#f6f8fa}.resume-activity-list>div>div{display:grid}.resume-activity-list small{color:#6b7580}
+.resume-edit-card{margin-top:22px}.teacher-student-title{display:flex;justify-content:space-between;align-items:flex-end;gap:18px}
+@media print{.topbar,.pwa-utility,.back-button,.resume-actions,.resume-edit-card{display:none!important}.page{padding:0}.resume-layout{grid-template-columns:210px 1fr}.resume-side{position:static}.resume-paper{box-shadow:none}}
+@media(max-width:900px){.resume-layout{grid-template-columns:1fr}.resume-side{position:static;display:grid;grid-template-columns:170px 1fr;gap:12px}.resume-photo-wrap{grid-row:1/6}.resume-photo,.resume-photo-placeholder{width:140px;height:140px}.resume-side-section{grid-column:2}.resume-two-column,.resume-project-grid{grid-template-columns:1fr}.teacher-student-title,.resume-actions{align-items:stretch;flex-direction:column}}
+@media(max-width:600px){.resume-side{display:block}.resume-photo-wrap{margin-bottom:12px}.resume-milestone-grid,.resume-activity-list{grid-template-columns:1fr}.resume-achievement{grid-template-columns:1fr}.resume-stat-row{grid-template-columns:1fr 1fr 1fr}.resume-paper{padding:20px}}

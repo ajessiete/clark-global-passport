@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}{{ student.name }} • Global Resume{% endblock %}
+{% block content %}
+<a class="back-button" href="{% if viewer.role == 'teacher' %}{{ url_for('teacher_student', student_id=student.id) }}{% else %}{{ url_for('student_dashboard') }}{% endif %}">← Back</a>
+
+<div class="resume-actions">
+    <div>
+        <p class="eyebrow">GLOBAL PROFILE</p>
+        <h1>Your story, evidence, and achievements.</h1>
+        <p class="muted">This profile grows automatically as you use Clark Global Passport.</p>
+    </div>
+    <a class="button" href="{{ url_for('student_profile_pdf', student_id=student.id) }}">Download PDF ↓</a>
+</div>
+
+<div class="resume-layout">
+    <aside class="resume-side">
+        <div class="resume-photo-wrap">
+            {% if profile.photo_data %}
+                <img class="resume-photo" src="{{ url_for('student_profile_photo', student_id=student.id) }}" alt="Profile photo">
+            {% else %}
+                <div class="resume-photo-placeholder">{{ (student.first_name or student.name or '?')[:1]|upper }}</div>
+            {% endif %}
+        </div>
+
+        <h2>{{ student.name }}</h2>
+        <p class="resume-headline">{{ profile.headline or ('Year ' ~ student.year_level ~ ' Student') }}</p>
+
+        <div class="resume-mini-meta">
+            <span>Year {{ student.year_level }}</span>
+            {% if academic.homeroom %}<span>{{ academic.homeroom }}</span>{% endif %}
+            {% if academic.eiken_level %}<span>EIKEN {{ academic.eiken_level }}</span>{% endif %}
+        </div>
+
+        {% if skills %}
+        <div class="resume-side-section">
+            <h3>Skills</h3>
+            <div class="resume-tags">{% for item in skills %}<span>{{ item }}</span>{% endfor %}</div>
+        </div>
+        {% endif %}
+
+        {% if languages %}
+        <div class="resume-side-section">
+            <h3>Languages</h3>
+            <div class="resume-tags">{% for item in languages %}<span>{{ item }}</span>{% endfor %}</div>
+        </div>
+        {% endif %}
+
+        {% if interests %}
+        <div class="resume-side-section">
+            <h3>Interests</h3>
+            <div class="resume-tags">{% for item in interests %}<span>{{ item }}</span>{% endfor %}</div>
+        </div>
+        {% endif %}
+    </aside>
+
+    <main class="resume-paper">
+        {% if profile.summary %}
+        <section class="resume-section">
+            <p class="eyebrow">PROFILE</p>
+            <h2>About Me</h2>
+            <p class="resume-summary">{{ profile.summary }}</p>
+        </section>
+        {% endif %}
+
+        <section class="resume-section">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">ACHIEVEMENTS</p>
+                    <h2>Highlights & Evidence</h2>
+                </div>
+                <span class="resume-count">{{ portfolio_items|length }}</span>
+            </div>
+
+            <div class="resume-achievement-list">
+            {% for item in portfolio_items[:8] %}
+                <article class="resume-achievement">
+                    <span class="pill">{{ item.category }}</span>
+                    <div>
+                        <h3>{{ item.title }}</h3>
+                        <p>{{ item.description }}</p>
+                    </div>
+                </article>
+            {% else %}
+                <p class="muted">Achievements added to your Portfolio will appear here automatically.</p>
+            {% endfor %}
+            </div>
+        </section>
+
+        <section class="resume-section">
+            <p class="eyebrow">GLOBAL PASSPORT</p>
+            <h2>Completed Milestones</h2>
+            <div class="resume-milestone-grid">
+            {% for goal in completed_year_goals %}
+                <div class="resume-milestone">
+                    <strong>✓</strong>
+                    <div><span>YEAR {{ goal.year }}</span><p>{{ goal.label }}</p></div>
+                </div>
+            {% else %}
+                <p class="muted">Completed Year Goals will appear here.</p>
+            {% endfor %}
+            </div>
+        </section>
+
+        <div class="resume-two-column">
+            <section class="resume-section">
+                <p class="eyebrow">ENGLISH DEVELOPMENT</p>
+                <h2>English & DET</h2>
+                <div class="resume-stat-row">
+                    <div><strong>{{ official_det.score if official_det and official_det.score else (latest_det.score if latest_det and latest_det.score else '—') }}</strong><span>DET</span></div>
+                    <div><strong>{{ academic.eiken_level or '—' }}</strong><span>EIKEN</span></div>
+                    <div><strong>{{ approved_writeshops|length }}/8</strong><span>Writeshops</span></div>
+                </div>
+                {% if det_levels %}
+                <div class="resume-level-list">
+                {% for level in det_levels %}
+                    <div><span>DET Course L{{ level.level }}</span><strong>{{ level.correct }}/100</strong></div>
+                {% endfor %}
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="resume-section">
+                <p class="eyebrow">PERSONAL ESSAY</p>
+                <h2>Approved Stages</h2>
+                <div class="resume-simple-list">
+                {% for essay in approved_essay_stages %}
+                    <div><span>✓</span><p>{{ essay.stage }}</p></div>
+                {% else %}
+                    <p class="muted">Approved essay stages will appear here.</p>
+                {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        <section class="resume-section">
+            <p class="eyebrow">PROJECTS & INQUIRY</p>
+            <h2>What I Have Worked On</h2>
+            <div class="resume-project-grid">
+            {% for project in projects[:6] %}
+                <article>
+                    <span class="mini-label">{{ project.stage }}</span>
+                    <h3>{{ project.title }}</h3>
+                    <p>{{ project.description or project.question }}</p>
+                </article>
+            {% else %}
+                <p class="muted">Projects will appear here automatically.</p>
+            {% endfor %}
+            </div>
+        </section>
+
+        {% if universities %}
+        <section class="resume-section">
+            <p class="eyebrow">FUTURE PATH</p>
+            <h2>University Exploration</h2>
+            <div class="resume-university-list">
+            {% for uni in universities[:6] %}
+                <div>
+                    <div>
+                        <strong>{{ uni.university }}</strong>
+                        <span>{{ uni.program }}{% if uni.country %} • {{ uni.country }}{% endif %}</span>
+                    </div>
+                    <span class="{% if uni.applied or uni.status == 'Submitted' %}status-good{% else %}pill{% endif %}">
+                        {% if uni.applied or uni.status == 'Submitted' %}✓ Submitted{% else %}{{ uni.status }}{% endif %}
+                    </span>
+                </div>
+            {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if activities %}
+        <section class="resume-section">
+            <p class="eyebrow">RECENT GROWTH</p>
+            <h2>Activity Highlights</h2>
+            <div class="resume-activity-list">
+            {% for activity in activities[:6] %}
+                <div><span>{{ activity.icon }}</span><div><strong>{{ activity.title }}</strong><small>{{ activity.created_at.strftime('%Y-%m-%d') }}</small></div></div>
+            {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+    </main>
+</div>
+
+{% if editable %}
+<section class="card resume-edit-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">EDIT PROFILE</p>
+            <h2>Personalize Your Global Resume</h2>
+            <p class="muted">Achievements and learning records are automatic. These fields are yours to personalize.</p>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="form-stack">
+        <label>Profile headline</label>
+        <input name="headline" maxlength="180" value="{{ profile.headline or '' }}" placeholder="e.g. Aspiring International Relations Student">
+
+        <label>Short profile / About Me</label>
+        <textarea name="summary" rows="5" placeholder="Write 3–5 sentences about your interests, strengths, experiences, and future direction.">{{ profile.summary or '' }}</textarea>
+
+        <div class="form-grid">
+            <div>
+                <label>Skills</label>
+                <textarea name="skills" rows="4" placeholder="Public speaking, research, teamwork...">{{ profile.skills or '' }}</textarea>
+                <small>Separate with commas or new lines.</small>
+            </div>
+            <div>
+                <label>Languages</label>
+                <textarea name="languages" rows="4" placeholder="Japanese, English...">{{ profile.languages or '' }}</textarea>
+                <small>Separate with commas or new lines.</small>
+            </div>
+        </div>
+
+        <label>Interests</label>
+        <input name="interests" value="{{ profile.interests or '' }}" placeholder="e.g. International relations, sustainability, literature">
+
+        <label>Profile photo</label>
+        <input type="file" name="photo" accept="image/jpeg,image/png">
+        <small>JPEG or PNG, maximum 2 MB. Stored securely with your profile data.</small>
+
+        {% if profile.photo_data %}
+        <label class="form-check">
+            <input type="checkbox" name="remove_photo" value="1">
+            <span>Remove current profile photo</span>
+        </label>
+        {% endif %}
+
+        <button type="submit">Save Profile</button>
+    </form>
+</section>
+{% endif %}
+{% endblock %}
