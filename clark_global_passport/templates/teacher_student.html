@@ -16,6 +16,40 @@
     <div class="hero-badge">YEAR<br>{{ student.year_level }}</div>
 </section>
 
+{% if student.year_level < 3 %}
+<section class="card teacher-promotion-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">YEAR PLACEMENT</p>
+            <h2>Move Student to Year {{ student.year_level + 1 }}</h2>
+            <p class="muted">
+                Use this if the student should advance but did not submit a promotion request.
+                Unfinished Global Passport goals from Year {{ student.year_level }} will carry forward automatically.
+            </p>
+        </div>
+        <form method="post"
+              action="{{ url_for('teacher_direct_promote_student', student_id=student.id) }}"
+              class="direct-promote-form"
+              data-student="{{ student.name }}"
+              data-current-year="{{ student.year_level }}"
+              data-next-year="{{ student.year_level + 1 }}">
+            <button type="submit" class="button">Promote to Year {{ student.year_level + 1 }}</button>
+        </form>
+    </div>
+</section>
+{% else %}
+<section class="card teacher-promotion-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">YEAR PLACEMENT</p>
+            <h2>Year 3</h2>
+            <p class="muted">This student is already in the final year of the Global Passport pathway.</p>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+
 <section class="card">
     <div class="section-heading">
         <div>

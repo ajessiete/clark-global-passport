@@ -738,3 +738,24 @@ th{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.
         justify-self:start;
     }
 }
+
+
+/* Teacher promotion v10.5 */
+.teacher-promotion-card{
+    border-left:4px solid currentColor;
+}
+.teacher-promotion-card .section-heading{
+    align-items:center;
+}
+.direct-promote-form{
+    margin:0;
+    flex:0 0 auto;
+}
+@media(max-width:700px){
+    .teacher-promotion-card .section-heading{
+        align-items:stretch;
+    }
+    .direct-promote-form .button{
+        width:100%;
+    }
+}

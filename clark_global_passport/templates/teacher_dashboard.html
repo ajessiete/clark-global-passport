@@ -122,6 +122,7 @@
             <p class="eyebrow">ATTENTION NEEDED</p>
             <h2>{{ attention|length }} items to review</h2>
         </div>
+        <a class="button secondary small" href="{{ url_for('teacher_activity') }}">See all activity →</a>
     </div>
     <div class="attention-list">
     {% for item in attention[:8] %}

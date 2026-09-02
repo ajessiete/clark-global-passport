@@ -323,3 +323,14 @@ Jinja interpreted `year_progress.items` as the dictionary `.items()` method.
 - There is no resubmission workflow for yearly milestones.
 - Unfinished previous-year milestones remain in Carried Over until a teacher completes them.
 - The old teacher-side Competency Profile card has been replaced by Global Passport Progress.
+
+
+## v10.5 — Teacher Activity + Direct Promotion
+
+- Attention Needed now includes a See all activity button linking to the full teacher activity page.
+- Teachers can directly promote a Year 1 or Year 2 student from the student's profile even if the student did not submit a promotion request.
+- Year 3 students cannot be promoted further.
+- Direct promotion requires a browser confirmation.
+- Any unfinished earlier-year Global Passport milestones remain incomplete and automatically carry forward.
+- Direct teacher promotions are recorded in both ActivityLog and AdminAuditLog.
+- If a pending promotion request exists, it is closed when the teacher directly promotes the student.

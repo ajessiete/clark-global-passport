@@ -1654,6 +1654,61 @@ def review_teacher_account(user_id, action):
     db.session.commit()
     return redirect(url_for("teacher_dashboard"))
 
+@app.route("/teacher/student/<int:student_id>/promote", methods=["POST"])
+def teacher_direct_promote_student(student_id):
+    teacher = current_user()
+    if not teacher or teacher.role != "teacher":
+        return redirect(url_for("login"))
+
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+    current_year = int(student.year_level or 1)
+
+    if current_year >= 3:
+        flash("Year 3 students cannot be promoted further.", "error")
+        return redirect(url_for("teacher_student", student_id=student.id))
+
+    requested_year = current_year + 1
+
+    # Close any still-pending request for the same move so the dashboard
+    # does not continue showing it after a teacher promotes directly.
+    pending = PromotionRequest.query.filter_by(
+        student_id=student.id,
+        status="Pending"
+    ).order_by(PromotionRequest.requested_at.desc()).first()
+    if pending:
+        pending.status = "Approved"
+        pending.requested_year = requested_year
+        pending.teacher_comment = "Teacher promoted student directly."
+        pending.reviewed_by = teacher.id
+        pending.reviewed_at = datetime.utcnow()
+
+    student.year_level = requested_year
+    ensure_year_milestones(student)
+
+    log_activity(
+        student.id,
+        "Teacher Promotion",
+        f"Promoted to Year {requested_year}",
+        f"{teacher.name} moved the student from Year {current_year} to Year {requested_year}. "
+        "Any unfinished earlier-year passport goals are carried forward.",
+        "⬆️",
+        teacher.id,
+    )
+
+    db.session.add(AdminAuditLog(
+        actor_id=teacher.id,
+        actor_name=teacher.name,
+        action="Direct Student Promotion",
+        target_name=student.name,
+        target_email=student.email,
+        detail=f"Year {current_year} → Year {requested_year}"
+    ))
+
+    db.session.commit()
+    flash(f"{student.name} is now Year {requested_year}. Unfinished earlier goals were carried forward.", "success")
+    return redirect(url_for("teacher_student", student_id=student.id))
+
+
 @app.route("/teacher/promotion/<int:request_id>/<action>", methods=["POST"])
 def review_promotion(request_id, action):
     teacher = current_user()
