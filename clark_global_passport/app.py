@@ -14,7 +14,7 @@ from reportlab.lib.utils import ImageReader
 import csv
 import io
 import os
-
+import re
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
 database_url = os.environ.get("DATABASE_URL", "sqlite:///clark_global_passport.db")

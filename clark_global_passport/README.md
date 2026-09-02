@@ -417,3 +417,10 @@ The IELTS ranges are internal course labels and are not presented as an official
   `workshop_progress` variable being passed to the student dashboard.
 - Preserves `workshop_progress` on the teacher student profile where
   Writeshop review controls need it.
+
+
+## v10.8.3 - Essay Rich-Text Submission Hotfix
+
+- Fixes the `/essay-lab` POST Internal Server Error.
+- Adds the missing Python `re` import used by rich-text essay validation.
+- Word-style essay submissions can now be validated and saved normally.
