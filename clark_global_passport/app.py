@@ -182,6 +182,11 @@ class ActivityLog(db.Model):
     icon = db.Column(db.String(10), default="🔔")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class SystemMigration(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(120), unique=True, nullable=False)
+    applied_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class AdminAuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     actor_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
@@ -1689,47 +1694,151 @@ def teacher_update_competency(student_id):
     return redirect(url_for("teacher_student", student_id=student.id))
 
 
-def remove_legacy_demo_students():
-    """Remove only the two fake student records shipped in older prototypes."""
-    demo_emails = ["yuki@clark.local", "haruto@clark.local"]
-    demo_students = User.query.filter(User.email.in_(demo_emails), User.role == "student").all()
-    if not demo_students:
+def reset_all_students_once():
+    """One-time v10.1.3 reset: remove every student account and student-linked record."""
+    migration_key = "v10.1.3_reset_all_students"
+    if SystemMigration.query.filter_by(key=migration_key).first():
         return
 
-    ids = [student.id for student in demo_students]
+    student_ids = [
+        row[0] for row in db.session.query(User.id).filter(User.role == "student").all()
+    ]
 
-    # Delete dependent records explicitly so this works consistently on SQLite/PostgreSQL.
-    EssayFeedback.query.filter(
-        EssayFeedback.submission_id.in_(
-            db.session.query(EssaySubmission.id).filter(EssaySubmission.student_id.in_(ids))
+    if student_ids:
+        submission_ids = [
+            row[0] for row in
+            db.session.query(EssaySubmission.id).filter(EssaySubmission.student_id.in_(student_ids)).all()
+        ]
+
+        if submission_ids:
+            EssayFeedback.query.filter(
+                EssayFeedback.submission_id.in_(submission_ids)
+            ).delete(synchronize_session=False)
+
+        for model in [
+            StudentAcademicProfile,
+            CompetencyScore,
+            Reflection,
+            Project,
+            PortfolioItem,
+            EssaySubmission,
+            ConsultationEntry,
+            Year3Milestone,
+            DETRecord,
+            UniversityOption,
+            PromotionRequest,
+            ActivityLog,
+            TeacherNote,
+            FutureGoal,
+        ]:
+            model.query.filter(model.student_id.in_(student_ids)).delete(synchronize_session=False)
+
+        User.query.filter(User.id.in_(student_ids)).delete(synchronize_session=False)
+
+    db.session.add(SystemMigration(key=migration_key))
+    db.session.commit()
+
+
+def remove_legacy_demo_accounts_and_bootstrap():
+    """Remove legacy demo accounts and make sure a real installation can be bootstrapped."""
+
+    # Legacy fake students from earlier prototype versions.
+    demo_student_emails = ["yuki@clark.local", "haruto@clark.local"]
+    demo_students = User.query.filter(
+        User.email.in_(demo_student_emails),
+        User.role == "student"
+    ).all()
+
+    if demo_students:
+        ids = [student.id for student in demo_students]
+
+        submission_ids = [
+            row[0] for row in
+            db.session.query(EssaySubmission.id).filter(EssaySubmission.student_id.in_(ids)).all()
+        ]
+        if submission_ids:
+            EssayFeedback.query.filter(
+                EssayFeedback.submission_id.in_(submission_ids)
+            ).delete(synchronize_session=False)
+
+        for model in [
+            CompetencyScore,
+            Reflection,
+            Project,
+            PortfolioItem,
+            EssaySubmission,
+            ConsultationEntry,
+            Year3Milestone,
+            DETRecord,
+            UniversityOption,
+            PromotionRequest,
+            ActivityLog,
+            TeacherNote,
+            FutureGoal,
+            StudentAcademicProfile,
+        ]:
+            model.query.filter(model.student_id.in_(ids)).delete(synchronize_session=False)
+
+        User.query.filter(User.id.in_(ids)).delete(synchronize_session=False)
+
+    # Remove the legacy demo teacher that previously blocked first-real-teacher bootstrap.
+    demo_teacher = User.query.filter_by(
+        email="teacher@clark.local",
+        role="teacher"
+    ).first()
+
+    if demo_teacher:
+        # Detach any adviser references first.
+        User.query.filter_by(adviser_id=demo_teacher.id).update(
+            {"adviser_id": None},
+            synchronize_session=False
         )
-    ).delete(synchronize_session=False)
 
-    for model in [
-        CompetencyScore,
-        Reflection,
-        Project,
-        PortfolioItem,
-        EssaySubmission,
-        ConsultationEntry,
-        Year3Milestone,
-        DETRecord,
-        UniversityOption,
-        PromotionRequest,
-        ActivityLog,
-        TeacherNote,
-        FutureGoal,
-        StudentAcademicProfile,
-    ]:
-        model.query.filter(model.student_id.in_(ids)).delete(synchronize_session=False)
+        # Preserve audit logs but detach their FK if necessary.
+        AdminAuditLog.query.filter_by(actor_id=demo_teacher.id).update(
+            {"actor_id": None},
+            synchronize_session=False
+        )
 
-    User.query.filter(User.id.in_(ids)).delete(synchronize_session=False)
+        # Remove teacher-owned feedback/notes/consultations where required.
+        EssayFeedback.query.filter_by(teacher_id=demo_teacher.id).delete(
+            synchronize_session=False
+        )
+        TeacherNote.query.filter_by(teacher_id=demo_teacher.id).delete(
+            synchronize_session=False
+        )
+        ConsultationEntry.query.filter_by(adviser_id=demo_teacher.id).delete(
+            synchronize_session=False
+        )
+
+        db.session.delete(demo_teacher)
+
+    db.session.flush()
+
+    # If no real teacher is active, activate the earliest pending real teacher.
+    active_real_teacher = User.query.filter(
+        User.role == "teacher",
+        User.account_status == "active",
+        User.email != "teacher@clark.local"
+    ).first()
+
+    if not active_real_teacher:
+        first_pending_teacher = User.query.filter(
+            User.role == "teacher",
+            User.account_status == "pending",
+            User.email != "teacher@clark.local"
+        ).order_by(User.created_at.asc(), User.id.asc()).first()
+
+        if first_pending_teacher:
+            first_pending_teacher.account_status = "active"
+
     db.session.commit()
 
 
 with app.app_context():
     db.create_all()
-    remove_legacy_demo_students()
+    reset_all_students_once()
+    remove_legacy_demo_accounts_and_bootstrap()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

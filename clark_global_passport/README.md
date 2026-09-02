@@ -254,3 +254,29 @@ Fixes Student Overview actions being served from an older cached JavaScript file
 - Student Overview JavaScript explicitly cache-busted
 - shared PWA JavaScript/CSS explicitly cache-busted
 - service worker registration URL versioned
+
+
+## v10.1.2 — Teacher bootstrap fix
+
+Fixes the case where the legacy `teacher@clark.local` demo account caused the first real teacher registration to remain pending.
+
+On startup:
+- removes the legacy demo teacher account
+- removes the old fake student accounts if still present
+- detaches demo-teacher adviser references safely
+- if there is no active real teacher, activates the earliest pending real teacher
+- once a real active teacher exists, later teacher registrations still require approval
+
+
+## v10.1.3 — Clean Student Reset
+
+This release performs a one-time reset of all student data so the live Student Overview starts at 0 students.
+
+On first startup after deploying v10.1.3:
+- deletes every student user account
+- deletes all student-linked essays and feedback
+- deletes reflections, projects, portfolio items, DET records, university options, consultation entries, milestones, notes, activity logs, competency scores, promotion requests, future goals, and academic profiles
+- preserves teacher accounts
+- records a one-time migration marker so the reset does not repeat on later restarts
+
+New students created after this reset are not deleted.
