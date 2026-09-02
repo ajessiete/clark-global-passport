@@ -227,3 +227,20 @@ Teacher-side roster management now includes:
 - fresh databases no longer create fake student accounts
 - first teacher account on a completely fresh database becomes active so the system can be bootstrapped
 - the old public demo-credentials box has been removed from the login page
+
+
+## v10.1 — Student Archive & Safe Delete
+
+Student Overview now includes safer account lifecycle controls:
+
+- Archive student: keeps all records but removes the student from the default active roster
+- Restore archived student
+- Account-status filter: Active / Archived / All
+- Permanent Delete button
+- First confirmation popup explains what will be deleted
+- Second confirmation popup requires the teacher to type the student's exact name
+- Server rejects deletion unless the exact name and final DELETE confirmation are submitted
+- Permanent deletion removes the student's associated app records
+- AdminAuditLog keeps the deleting/archiving teacher, action, target name/email snapshot, and timestamp
+
+For real school deployment, CSRF protection and a formal retention/deletion policy should still be added before using permanent delete with real student data.

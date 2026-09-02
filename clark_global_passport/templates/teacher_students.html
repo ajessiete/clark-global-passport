@@ -69,6 +69,15 @@
             </select>
         </label>
 
+        <label>
+            <span>Account</span>
+            <select id="status-filter">
+                <option value="active" selected>Active students</option>
+                <option value="archived">Archived students</option>
+                <option value="">All students</option>
+            </select>
+        </label>
+
         <button id="clear-roster-filters" class="button secondary" type="button">Clear</button>
     </div>
     <div class="roster-result-line">
@@ -90,7 +99,7 @@
                     <th><button class="sort-heading" data-sort="universities" type="button">Universities <span>↕</span></button></th>
                     <th><button class="sort-heading" data-sort="applications" type="button">Applications <span>↕</span></button></th>
                     <th><button class="sort-heading" data-sort="activity" type="button">Last Activity <span>↕</span></button></th>
-                    <th>Quick Edit</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -108,6 +117,7 @@
                     data-universities="{{ row.university_count }}"
                     data-applications="{{ row.applied_count }}"
                     data-activity="{{ row.latest_activity.created_at.timestamp() if row.latest_activity else 0 }}"
+                    data-status="{{ row.student.account_status or 'active' }}"
                 >
                     <td class="student-cell">
                         <a href="{{ url_for('teacher_student', student_id=row.student.id) }}">
@@ -163,40 +173,64 @@
                         {% endif %}
                     </td>
                     <td class="quick-edit-cell">
-                        <details>
-                            <summary>Quick edit</summary>
-                            <form method="post" action="{{ url_for('teacher_student_quick_update', student_id=row.student.id) }}" class="quick-edit-form">
-                                <label>
-                                    Year
-                                    <select name="year_level">
-                                        {% for y in [1,2,3] %}
-                                        <option value="{{ y }}" {% if row.student.year_level == y %}selected{% endif %}>Year {{ y }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </label>
-                                <label>
-                                    Adviser
-                                    <select name="adviser_id">
-                                        <option value="">— Unassigned —</option>
-                                        {% for teacher in teachers %}
-                                        <option value="{{ teacher.id }}" {% if row.adviser and row.adviser.id == teacher.id %}selected{% endif %}>{{ teacher.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </label>
-                                <label>
-                                    EIKEN
-                                    <select name="eiken_level">
-                                        <option value="">— Not recorded —</option>
-                                        {% for level in eiken_levels %}
-                                            {% if level %}
-                                            <option value="{{ level }}" {% if row.profile.eiken_level == level %}selected{% endif %}>{{ level }}</option>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </select>
-                                </label>
-                                <button type="submit">Save</button>
+                        <div class="student-actions">
+                            <details>
+                                <summary>Quick edit</summary>
+                                <form method="post" action="{{ url_for('teacher_student_quick_update', student_id=row.student.id) }}" class="quick-edit-form">
+                                    <label>
+                                        Year
+                                        <select name="year_level">
+                                            {% for y in [1,2,3] %}
+                                            <option value="{{ y }}" {% if row.student.year_level == y %}selected{% endif %}>Year {{ y }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Adviser
+                                        <select name="adviser_id">
+                                            <option value="">— Unassigned —</option>
+                                            {% for teacher in teachers %}
+                                            <option value="{{ teacher.id }}" {% if row.adviser and row.adviser.id == teacher.id %}selected{% endif %}>{{ teacher.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </label>
+                                    <label>
+                                        EIKEN
+                                        <select name="eiken_level">
+                                            <option value="">— Not recorded —</option>
+                                            {% for level in eiken_levels %}
+                                                {% if level %}
+                                                <option value="{{ level }}" {% if row.profile.eiken_level == level %}selected{% endif %}>{{ level }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </select>
+                                    </label>
+                                    <button type="submit">Save</button>
+                                </form>
+                            </details>
+
+                            {% if row.student.account_status == "archived" %}
+                            <form method="post" action="{{ url_for('teacher_student_restore', student_id=row.student.id) }}">
+                                <button class="roster-action restore-action" type="submit">Restore</button>
                             </form>
-                        </details>
+                            {% else %}
+                            <form method="post"
+                                  action="{{ url_for('teacher_student_archive', student_id=row.student.id) }}"
+                                  class="archive-student-form"
+                                  data-student-name="{{ row.student.name }}">
+                                <button class="roster-action archive-action" type="submit">Archive</button>
+                            </form>
+                            {% endif %}
+
+                            <form method="post"
+                                  action="{{ url_for('teacher_student_delete', student_id=row.student.id) }}"
+                                  class="delete-student-form"
+                                  data-student-name="{{ row.student.name }}">
+                                <input type="hidden" name="typed_name" value="">
+                                <input type="hidden" name="final_confirmation" value="">
+                                <button class="roster-action delete-action" type="submit">Delete</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
             {% else %}

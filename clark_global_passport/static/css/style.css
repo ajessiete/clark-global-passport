@@ -593,3 +593,62 @@ th{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.
     .roster-stats,.roster-controls,.academic-profile-grid{grid-template-columns:1fr}
     .roster-hero-actions{width:100%}
 }
+
+
+/* Student safety actions v10.1 */
+.roster-controls{
+    grid-template-columns:minmax(220px,2fr) repeat(4,minmax(135px,1fr)) auto
+}
+.student-actions{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:7px;
+    min-width:225px
+}
+.student-actions form{margin:0}
+.roster-action{
+    border-radius:9px;
+    padding:7px 9px;
+    border:1px solid var(--line);
+    background:#fff;
+    font-size:.73rem;
+    font-weight:800;
+    cursor:pointer
+}
+.archive-action{
+    color:#7a560b;
+    border-color:#ead8a8;
+    background:#fffaf0
+}
+.restore-action{
+    color:#176448;
+    border-color:#c4e7d8;
+    background:#eff9f5
+}
+.delete-action{
+    color:#a52a2a;
+    border-color:#edc7c7;
+    background:#fff5f5
+}
+.delete-action:hover{
+    background:#fdeaea;
+    border-color:#d99595
+}
+.student-overview-table tr[data-status="archived"]{
+    opacity:.72;
+    background:#fafafa
+}
+.student-overview-table tr[data-status="archived"] .student-cell strong::after{
+    content:"Archived";
+    display:inline-flex;
+    margin-left:8px;
+    border-radius:999px;
+    padding:3px 7px;
+    font-size:.62rem;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    background:#eceff1;
+    color:#667085;
+    vertical-align:middle
+}

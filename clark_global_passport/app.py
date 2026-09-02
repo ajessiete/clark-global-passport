@@ -182,6 +182,16 @@ class ActivityLog(db.Model):
     icon = db.Column(db.String(10), default="🔔")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class AdminAuditLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    actor_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    actor_name = db.Column(db.String(120), default="")
+    action = db.Column(db.String(80), nullable=False)
+    target_name = db.Column(db.String(120), default="")
+    target_email = db.Column(db.String(120), default="")
+    detail = db.Column(db.Text, default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class TeacherNote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -1189,6 +1199,117 @@ def teacher_students():
         teachers=teachers,
         eiken_levels=EIKEN_LEVELS,
     )
+
+
+
+@app.route("/teacher/students/<int:student_id>/archive", methods=["POST"])
+def teacher_student_archive(student_id):
+    user = current_user()
+    if not user or user.role != "teacher":
+        return redirect(url_for("login"))
+
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+    if student.account_status == "archived":
+        flash(f"{student.name} is already archived.", "info")
+        return redirect(url_for("teacher_students"))
+
+    student.account_status = "archived"
+    db.session.add(AdminAuditLog(
+        actor_id=user.id,
+        actor_name=user.name,
+        action="Archive Student",
+        target_name=student.name,
+        target_email=student.email,
+        detail="Student account archived from Student Overview."
+    ))
+    db.session.commit()
+    flash(f"{student.name} was archived. Their records were kept.", "success")
+    return redirect(url_for("teacher_students"))
+
+
+@app.route("/teacher/students/<int:student_id>/restore", methods=["POST"])
+def teacher_student_restore(student_id):
+    user = current_user()
+    if not user or user.role != "teacher":
+        return redirect(url_for("login"))
+
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+    student.account_status = "active"
+    db.session.add(AdminAuditLog(
+        actor_id=user.id,
+        actor_name=user.name,
+        action="Restore Student",
+        target_name=student.name,
+        target_email=student.email,
+        detail="Archived student account restored."
+    ))
+    db.session.commit()
+    flash(f"{student.name} was restored to the active roster.", "success")
+    return redirect(url_for("teacher_students"))
+
+
+@app.route("/teacher/students/<int:student_id>/delete", methods=["POST"])
+def teacher_student_delete(student_id):
+    user = current_user()
+    if not user or user.role != "teacher":
+        return redirect(url_for("login"))
+
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+
+    typed_name = request.form.get("typed_name", "").strip()
+    final_confirmation = request.form.get("final_confirmation", "")
+
+    if final_confirmation != "DELETE" or typed_name != student.name:
+        flash("Student was not deleted. The final confirmation did not match.", "error")
+        return redirect(url_for("teacher_students"))
+
+    target_name = student.name
+    target_email = student.email
+
+    # Keep an audit record that does not depend on the student record surviving.
+    audit = AdminAuditLog(
+        actor_id=user.id,
+        actor_name=user.name,
+        action="Delete Student",
+        target_name=target_name,
+        target_email=target_email,
+        detail="Student account and associated Clark Global Passport records permanently deleted."
+    )
+    db.session.add(audit)
+    db.session.flush()
+
+    # Feedback depends on essay submissions, so remove it first.
+    submission_ids = [
+        row[0] for row in
+        db.session.query(EssaySubmission.id).filter(EssaySubmission.student_id == student.id).all()
+    ]
+    if submission_ids:
+        EssayFeedback.query.filter(EssayFeedback.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+
+    # Remove all records owned by this student.
+    for model in [
+        StudentAcademicProfile,
+        CompetencyScore,
+        Reflection,
+        Project,
+        PortfolioItem,
+        EssaySubmission,
+        ConsultationEntry,
+        Year3Milestone,
+        DETRecord,
+        UniversityOption,
+        PromotionRequest,
+        ActivityLog,
+        TeacherNote,
+        FutureGoal,
+    ]:
+        model.query.filter_by(student_id=student.id).delete(synchronize_session=False)
+
+    db.session.delete(student)
+    db.session.commit()
+
+    flash(f"{target_name} was permanently deleted.", "success")
+    return redirect(url_for("teacher_students"))
 
 
 @app.route("/teacher/students/<int:student_id>/quick-update", methods=["POST"])
