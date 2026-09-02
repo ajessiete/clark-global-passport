@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, make_response
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -334,6 +334,19 @@ def inject_globals():
         "COMPETENCIES": COMPETENCIES
     }
 
+
+
+@app.route("/sw.js")
+def service_worker():
+    response = make_response(send_from_directory(app.static_folder, "sw.js"))
+    response.headers["Content-Type"] = "application/javascript"
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+@app.route("/offline")
+def offline():
+    return render_template("offline.html")
 
 @app.route("/health")
 def health():

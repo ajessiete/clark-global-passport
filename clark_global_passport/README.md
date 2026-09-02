@@ -187,3 +187,23 @@ Changes:
 - `DEPLOY_FREE.md`
 
 The same codebase can now be used locally in PyCharm and online.
+
+
+## Progressive Web App v9
+
+v9 adds installable PWA behavior without caching sensitive authenticated school data.
+
+Features:
+- installable app manifest
+- home-screen / desktop app icons
+- root-scoped service worker
+- online / offline indicator
+- install button when supported by the browser
+- offline fallback screen
+- local automatic drafts for Essay Lab
+- local automatic drafts for new Reflections
+- network-first navigation
+- static assets cached for faster loading
+- teacher dashboards, adviser notes, consultations, and authenticated HTML are not stored in the PWA cache
+
+Offline drafts are stored in the browser's localStorage on that device. They are not submitted to the server until the user is online and submits the form.

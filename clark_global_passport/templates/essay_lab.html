@@ -63,7 +63,8 @@
         </div>
         {% endif %}
 
-        <form method="post" class="form-stack essay-submit-form">
+        <form method="post" class="form-stack essay-submit-form" data-local-draft="true" data-draft-key="essay-{{ student.id }}-{{ current_stage|replace(' ', '-') }}">
+            <div class="draft-status">Drafts are saved automatically on this device.</div>
             <input type="hidden" name="stage" value="{{ current_stage }}">
             <label>Task title</label>
             <input name="title" required value="{{ current_stage }}">
