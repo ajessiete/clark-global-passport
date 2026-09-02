@@ -125,7 +125,7 @@
         <a class="button secondary small" href="{{ url_for('teacher_activity') }}">See all activity →</a>
     </div>
     <div class="attention-list">
-    {% for item in attention[:8] %}
+    {% for item in attention[:3] %}
         <a class="attention-item {{ item.severity }}" href="{{ url_for('teacher_student', student_id=item.student.id) }}">
             <div>
                 <strong>{{ item.student.name }}</strong>

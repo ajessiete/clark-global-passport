@@ -334,3 +334,9 @@ Jinja interpreted `year_progress.items` as the dictionary `.items()` method.
 - Any unfinished earlier-year Global Passport milestones remain incomplete and automatically carry forward.
 - Direct teacher promotions are recorded in both ActivityLog and AdminAuditLog.
 - If a pending promotion request exists, it is closed when the teacher directly promotes the student.
+
+
+## v10.5.1 — Attention Needed Preview
+
+- Teacher dashboard now shows only the first 3 Attention Needed items.
+- The See all activity button remains available for the complete activity history.
