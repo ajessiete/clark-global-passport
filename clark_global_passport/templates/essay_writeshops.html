@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('pathway') }}">← Back to Year Pathway</a>
+
+<div class="page-title">
+    <p class="eyebrow">ESSAY TRAINING</p>
+    <h1>Mini Essay Writeshops</h1>
+    <p>Learn one writing skill at a time, practice it immediately, and build toward your personal essay.</p>
+</div>
+
+<section class="card writeshop-overview">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">YOUR TRAINING PROGRESS</p>
+            <h2>{{ completed_count }} of {{ total }} completed</h2>
+        </div>
+        <strong>{{ percent }}%</strong>
+    </div>
+    <div class="passport-progress-track">
+        <div class="passport-progress-fill" style="width:{{ percent }}%"></div>
+    </div>
+    {% if completed_count == total %}
+    <div class="year-complete-message">✓ Essay Training complete — your Year 1 progress has updated automatically.</div>
+    {% endif %}
+</section>
+
+<div class="writeshop-grid">
+{% for workshop in workshops %}
+    {% set p = progress_map.get(workshop.key) %}
+    <a class="writeshop-card {% if p and p.completed %}completed{% endif %}" href="{{ url_for('essay_writeshop', workshop_key=workshop.key) }}">
+        <span class="writeshop-number">{{ "%02d"|format(workshop.number) }}</span>
+        <div>
+            <p class="mini-label">WRITESHOP {{ workshop.number }}</p>
+            <h2>{{ workshop.title }}</h2>
+            <p>{{ workshop.subtitle }}</p>
+        </div>
+        <span class="writeshop-status">{% if p and p.completed %}✓ Complete{% elif p and p.content %}Continue →{% else %}Start →{% endif %}</span>
+    </a>
+{% endfor %}
+</div>
+
+<section class="card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">READY FOR THE REAL ESSAY?</p>
+            <h2>Personal Essay Lab</h2>
+            <p class="muted">Your writeshops are independent practice. Your actual Personal Essay remains teacher-gated.</p>
+        </div>
+        <a class="button" href="{{ url_for('essay_lab') }}">Open Personal Essay Lab →</a>
+    </div>
+</section>
+{% endblock %}

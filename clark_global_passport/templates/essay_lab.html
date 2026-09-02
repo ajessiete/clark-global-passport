@@ -63,13 +63,33 @@
         </div>
         {% endif %}
 
-        <form method="post" class="form-stack essay-submit-form" data-local-draft="true" data-draft-key="essay-{{ student.id }}-{{ current_stage|replace(' ', '-') }}">
+        <form method="post" class="form-stack essay-submit-form rich-editor-form" data-local-draft="rich" data-draft-key="essay-{{ student.id }}-{{ current_stage|replace(' ', '-') }}">
             <div class="draft-status">Drafts are saved automatically on this device.</div>
             <input type="hidden" name="stage" value="{{ current_stage }}">
             <label>Task title</label>
             <input name="title" required value="{{ current_stage }}">
             <label>Your work</label>
-            <textarea class="essay-box" name="content" required placeholder="Write or paste your work here...">{% if current_latest and current_latest.status == 'Resubmission Requested' %}{{ current_latest.content }}{% endif %}</textarea>
+            <input type="hidden" name="content" class="rich-editor-input" required>
+            <div class="word-editor">
+                <div class="word-toolbar" role="toolbar" aria-label="Formatting">
+                    <button type="button" data-command="bold"><strong>B</strong></button>
+                    <button type="button" data-command="italic"><em>I</em></button>
+                    <button type="button" data-command="underline"><u>U</u></button>
+                    <span class="toolbar-divider"></span>
+                    <button type="button" data-command="insertUnorderedList">• List</button>
+                    <button type="button" data-command="insertOrderedList">1. List</button>
+                    <span class="toolbar-divider"></span>
+                    <button type="button" data-command="undo">↶</button>
+                    <button type="button" data-command="redo">↷</button>
+                </div>
+                <div class="word-ruler"></div>
+                <div class="word-page rich-editor" contenteditable="true" spellcheck="true"
+                     data-placeholder="Write or paste your work here...">{% if current_latest and current_latest.status == 'Resubmission Requested' %}{{ current_latest.content|safe }}{% endif %}</div>
+                <div class="word-statusbar">
+                    <span class="editor-save-status">Drafts save automatically on this device.</span>
+                    <span><strong class="editor-word-count">0</strong> words</span>
+                </div>
+            </div>
             <button type="submit">{% if current_latest and current_latest.status == 'Resubmission Requested' %}Submit Revised Version{% else %}Submit for Teacher Review{% endif %}</button>
         </form>
     {% endif %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('essay_writeshops') }}">← All Writeshops</a>
+
+<div class="workshop-shell">
+    <aside class="workshop-sidebar">
+        <p class="eyebrow">ESSAY TRAINING</p>
+        {% for item in workshops %}
+        <a href="{{ url_for('essay_writeshop', workshop_key=item.key) }}"
+           class="{% if item.key == workshop.key %}active{% endif %}">
+            <span>{{ "%02d"|format(item.number) }}</span>{{ item.title }}
+        </a>
+        {% endfor %}
+    </aside>
+
+    <main class="workshop-main">
+        <div class="page-title">
+            <p class="eyebrow">WRITESHOP {{ workshop.number }}</p>
+            <h1>{{ workshop.title }}</h1>
+            <p>{{ workshop.subtitle }}</p>
+        </div>
+
+        <section class="card lesson-card">
+            <div class="language-tabs" data-language-tabs>
+                <button type="button" class="active" data-lang="en">English</button>
+                <button type="button" data-lang="ja">日本語</button>
+            </div>
+
+            <article class="lesson-copy" data-language-panel="en">
+                {% for para in workshop.en %}<p>{{ para }}</p>{% endfor %}
+            </article>
+            <article class="lesson-copy" data-language-panel="ja" hidden>
+                {% for para in workshop.ja %}<p>{{ para }}</p>{% endfor %}
+            </article>
+
+            <div class="example-compare">
+                <div class="example weak">
+                    <span>WEAK / TOO GENERAL</span>
+                    <p>{{ workshop.example_weak }}</p>
+                </div>
+                <div class="example strong">
+                    <span>STRONGER</span>
+                    <p>{{ workshop.example_strong }}</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="card practice-card">
+            <p class="eyebrow">TRY IT YOURSELF</p>
+            <h2>Practice</h2>
+            <p>{{ workshop.prompt }}</p>
+
+            <form method="post" class="rich-editor-form"
+                  data-local-draft="rich"
+                  data-draft-key="writeshop-{{ current_user.id }}-{{ workshop.key }}">
+                <input type="hidden" name="content" class="rich-editor-input" value="">
+                <div class="word-editor">
+                    <div class="word-toolbar" role="toolbar" aria-label="Formatting">
+                        <button type="button" data-command="bold"><strong>B</strong></button>
+                        <button type="button" data-command="italic"><em>I</em></button>
+                        <button type="button" data-command="underline"><u>U</u></button>
+                        <span class="toolbar-divider"></span>
+                        <button type="button" data-command="insertUnorderedList">• List</button>
+                        <button type="button" data-command="insertOrderedList">1. List</button>
+                        <span class="toolbar-divider"></span>
+                        <button type="button" data-command="undo">↶</button>
+                        <button type="button" data-command="redo">↷</button>
+                    </div>
+                    <div class="word-ruler"></div>
+                    <div class="word-page rich-editor"
+                         contenteditable="true"
+                         spellcheck="true"
+                         data-placeholder="Start writing here...">{{ progress.content|safe }}</div>
+                    <div class="word-statusbar">
+                        <span class="editor-save-status">Draft ready</span>
+                        <span><strong class="editor-word-count">0</strong> words</span>
+                    </div>
+                </div>
+                <div class="editor-actions">
+                    <button type="submit" name="action" value="save" class="secondary">Save Draft</button>
+                    <button type="submit" name="action" value="complete">✓ Mark Writeshop Complete</button>
+                </div>
+            </form>
+
+            {% if progress.completed %}
+            <div class="year-complete-message">✓ You completed this writeshop. You can still return and improve your practice.</div>
+            {% endif %}
+        </section>
+    </main>
+</div>
+{% endblock %}

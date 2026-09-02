@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text as sql_text
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from html.parser import HTMLParser
 import csv
 import io
 import os
@@ -91,6 +92,21 @@ class PortfolioItem(db.Model):
     evidence = db.Column(db.Text, default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+
+
+class EssayWorkshopProgress(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    workshop_key = db.Column(db.String(80), nullable=False)
+    content = db.Column(db.Text, default="")
+    completed = db.Column(db.Boolean, default=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("student_id", "workshop_key",
+                            name="uq_essay_workshop_student_key"),
+    )
 
 
 class EssaySubmission(db.Model):
@@ -317,6 +333,207 @@ def ensure_year3_milestones(student_id):
     if changed:
         db.session.commit()
     return Year3Milestone.query.filter_by(student_id=student_id).order_by(Year3Milestone.id.asc()).all()
+
+class RichTextSanitizer(HTMLParser):
+    allowed_tags = {"p", "br", "strong", "b", "em", "i", "u", "ul", "ol", "li", "blockquote", "h2", "h3", "div"}
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+    def handle_starttag(self, tag, attrs):
+        if tag in self.allowed_tags:
+            self.parts.append(f"<{tag}>")
+    def handle_endtag(self, tag):
+        if tag in self.allowed_tags and tag != "br":
+            self.parts.append(f"</{tag}>")
+    def handle_data(self, data):
+        from markupsafe import escape
+        self.parts.append(str(escape(data)))
+    def get_html(self):
+        return "".join(self.parts)
+
+def sanitize_rich_text(value):
+    sanitizer = RichTextSanitizer()
+    sanitizer.feed(value or "")
+    return sanitizer.get_html().strip()
+
+ESSAY_WRITESHOPS = [
+    {
+        "key": "hooks",
+        "number": 1,
+        "title": "Writing Effective Hooks",
+        "subtitle": "Start with curiosity, not drama.",
+        "en": [
+            "A hook is the opening line of your essay. Its job is not to sound dramatic. Its job is to make the reader curious enough to continue.",
+            "Strong hooks are usually specific. They can begin with a small moment, an unusual detail, a surprising contrast, or a line of dialogue that leads naturally into your story.",
+            "Avoid very broad openings such as “Everyone has challenges in life.” A personal essay becomes memorable when the first line already sounds like it belongs to you."
+        ],
+        "ja": [
+            "フック（hook）とは、エッセイの最初の一文です。大げさに書くことが目的ではなく、読み手に「この先を読みたい」と思わせることが目的です。",
+            "効果的なフックは、具体的であることが多いです。小さな出来事、印象的な細部、意外な対比、会話の一言などから始めることができます。",
+            "「人生には誰にでも困難があります」のような一般的すぎる書き出しは避けましょう。最初の一文から、あなた自身の声が感じられることが大切です。"
+        ],
+        "example_weak": "Everyone has challenges in life.",
+        "example_strong": "I was eleven when I learned that being the loudest person in the room did not mean I was the most confident.",
+        "prompt": "Write three possible hooks for one experience from your Story Bank. Then choose the strongest one and explain why it makes you want to keep reading."
+    },
+    {
+        "key": "introductions",
+        "number": 2,
+        "title": "Building a Strong Introduction",
+        "subtitle": "Give the reader a clear doorway into your story.",
+        "en": [
+            "An introduction should do more than introduce a topic. It should place the reader inside a situation and establish what matters.",
+            "After your hook, give just enough context to understand the moment. Do not explain your entire life story at once. Let the essay unfold.",
+            "By the end of the introduction, the reader should sense the question, tension, change, or idea that the essay will explore."
+        ],
+        "ja": [
+            "導入部分は、単にテーマを紹介するだけではありません。読み手を具体的な場面に入れ、その経験の何が重要なのかを示します。",
+            "フックの後には、その場面を理解するために必要な情報だけを加えましょう。最初から人生全体を説明する必要はありません。",
+            "導入の終わりまでに、このエッセイがどんな問い・葛藤・変化・考えを扱うのかが自然に伝わると効果的です。"
+        ],
+        "example_weak": "This essay is about my experience joining a club.",
+        "example_strong": "On my first day in the debate room, I wrote my opening sentence three times and still could not make myself stand up.",
+        "prompt": "Write a 3–5 sentence introduction that begins with a hook, gives necessary context, and hints at what changed or mattered."
+    },
+    {
+        "key": "specific_details",
+        "number": 3,
+        "title": "Show, Don’t Just Tell",
+        "subtitle": "Turn general statements into scenes the reader can picture.",
+        "en": [
+            "Personal essays become stronger when the reader can see what happened. Instead of only naming an emotion, show the actions, details, or thoughts that reveal it.",
+            "Specific details do not need to be long. One precise detail can be more powerful than several vague sentences.",
+            "Choose details that support the meaning of the story. Description should serve the essay, not decorate it."
+        ],
+        "ja": [
+            "パーソナルエッセイでは、読み手が出来事を想像できるように書くことが大切です。感情を言葉で説明するだけでなく、その感情が伝わる行動・細部・考えを示しましょう。",
+            "具体的な描写は長くなくても構いません。一つの正確な細部が、何文もの曖昧な説明より強く伝わることがあります。",
+            "描写は飾りではなく、物語の意味を支えるために使いましょう。"
+        ],
+        "example_weak": "I was very nervous before the presentation.",
+        "example_strong": "I kept folding the corner of my cue card until the paper had turned soft between my fingers.",
+        "prompt": "Choose one general sentence from your story and rewrite it using actions, sensory details, thoughts, or dialogue."
+    },
+    {
+        "key": "examples",
+        "number": 4,
+        "title": "Using Specific Examples",
+        "subtitle": "Prove your point through one meaningful experience.",
+        "en": [
+            "A strong personal essay does not simply claim that you are hardworking, curious, kind, or resilient. It gives the reader evidence.",
+            "Choose one or two experiences that reveal the quality naturally. Explain what you did, what was difficult, and what happened because of your choices.",
+            "The example should move the essay forward instead of becoming a list of achievements."
+        ],
+        "ja": [
+            "良いパーソナルエッセイは、「私は努力家です」「好奇心があります」と主張するだけではありません。そのことが伝わる具体的な経験を示します。",
+            "一つか二つの経験を選び、何をしたのか、何が難しかったのか、自分の行動によって何が起きたのかを書きましょう。",
+            "実績の羅列ではなく、エッセイの流れや意味を深める例にすることが大切です。"
+        ],
+        "example_weak": "I am a good leader because I joined many activities.",
+        "example_strong": "When two members stopped speaking during our project, I changed our weekly meeting into ten-minute individual check-ins before asking the group to decide together.",
+        "prompt": "Write one paragraph using a specific experience as evidence for a quality, value, or skill you want the reader to understand about you."
+    },
+    {
+        "key": "reflection",
+        "number": 5,
+        "title": "Reflection & Meaning",
+        "subtitle": "Explain why the experience matters now.",
+        "en": [
+            "Reflection is what turns a story into a personal essay. After describing what happened, ask what you understood differently because of it.",
+            "Avoid ending reflection with only “I learned to never give up.” Push one step further: What changed in how you think, act, choose, or understand other people?",
+            "Good reflection connects the past experience to the person you are becoming."
+        ],
+        "ja": [
+            "振り返り（reflection）は、単なる出来事の説明をパーソナルエッセイに変える重要な部分です。経験の後、自分の考え方がどう変わったのかを考えましょう。",
+            "「諦めないことを学びました」だけで終わらせず、考え方・行動・選択・他者への理解が具体的にどう変わったのかまで掘り下げます。",
+            "良い振り返りは、過去の経験と、今の自分・これからの自分をつなげます。"
+        ],
+        "example_weak": "This experience taught me to be confident.",
+        "example_strong": "I still get nervous before speaking, but I no longer treat nervousness as proof that I am unprepared. Now I see it as evidence that the moment matters to me.",
+        "prompt": "Write 4–6 sentences explaining what your experience changed in the way you think, act, or understand yourself."
+    },
+    {
+        "key": "transitions",
+        "number": 6,
+        "title": "Connecting Ideas",
+        "subtitle": "Help the reader follow your thinking.",
+        "en": [
+            "Transitions are not only words such as however, therefore, or furthermore. A good transition shows how one idea grows from the previous one.",
+            "Repeat a key image, question, or idea when useful. You can also use time, contrast, cause and effect, or a change in perspective to move between paragraphs.",
+            "The goal is for the essay to feel like one developing thought rather than separate blocks."
+        ],
+        "ja": [
+            "トランジション（つなぎ）は、however や therefore のような接続語だけではありません。前の考えから次の考えへ、どのようにつながっているかを示すことが大切です。",
+            "必要に応じて、重要なイメージ・問い・キーワードを繰り返したり、時間の変化、対比、原因と結果、視点の変化を使ったりできます。",
+            "段落がバラバラに見えるのではなく、一つの考えが発展していくように読めることが目標です。"
+        ],
+        "example_weak": "Furthermore, I learned another important lesson.",
+        "example_strong": "The same silence that frightened me in the debate room later became the space I learned to use before answering.",
+        "prompt": "Write two connected paragraphs. Make the second paragraph feel like a natural continuation rather than a completely new topic."
+    },
+    {
+        "key": "conclusions",
+        "number": 7,
+        "title": "Writing Strong Conclusions",
+        "subtitle": "End with movement, not a summary.",
+        "en": [
+            "A conclusion should not simply repeat the introduction. It should show where the experience has taken you.",
+            "Return to an image, question, or idea from earlier in the essay, but let it mean something new after everything the reader has learned.",
+            "A strong ending can point toward the future without making an exaggerated promise about changing the world."
+        ],
+        "ja": [
+            "結論では、導入をそのまま繰り返す必要はありません。その経験によって自分がどこまで進んだのかを示しましょう。",
+            "エッセイの前半に出てきたイメージ・問い・考えに戻り、読み手がここまで読んだからこそ新しい意味を感じられる形にすると効果的です。",
+            "将来につなげることもできますが、「世界を変えたい」のような大げさな約束をする必要はありません。"
+        ],
+        "example_weak": "In conclusion, this experience made me who I am today.",
+        "example_strong": "I still keep that creased cue card in my desk—not because the speech was perfect, but because it was the first time I stood up before I felt ready.",
+        "prompt": "Write two possible conclusions for your story. Try one that returns to an image from the beginning and one that looks forward."
+    },
+    {
+        "key": "editing",
+        "number": 8,
+        "title": "Editing & Polishing",
+        "subtitle": "Make every sentence earn its place.",
+        "en": [
+            "Editing is more than fixing grammar. First revise for meaning: Is the story clear? Is every paragraph necessary? Does the reflection go deep enough?",
+            "Then revise sentences. Remove repeated ideas, vague words, and unnecessary introductions such as “I think that.” Choose verbs and details that are precise.",
+            "Finally, proofread grammar, spelling, punctuation, and formatting. Reading the essay aloud often reveals awkward sentences."
+        ],
+        "ja": [
+            "編集（editing）は文法ミスを直すだけではありません。まず内容を見直します。物語は分かりやすいか、各段落は必要か、振り返りは十分に深いかを確認しましょう。",
+            "次に文を整えます。重複した考え、曖昧な表現、「I think that」のような不要な前置きを減らし、より正確な動詞や細部を選びます。",
+            "最後に文法・スペル・句読点・形式を確認します。声に出して読むと、不自然な文に気づきやすくなります。"
+        ],
+        "example_weak": "I really truly realized that this was actually very important to me.",
+        "example_strong": "I realized why the moment mattered to me.",
+        "prompt": "Paste or write one paragraph from your essay. Revise it for clarity, precision, and unnecessary words."
+    },
+]
+
+def get_writeshop(key):
+    return next((item for item in ESSAY_WRITESHOPS if item["key"] == key), None)
+
+def sync_essay_training_milestone(student):
+    if not student or student.role != "student":
+        return
+    ensure_year_milestones(student)
+    required = {w["key"] for w in ESSAY_WRITESHOPS}
+    completed = {
+        row.workshop_key for row in EssayWorkshopProgress.query.filter_by(
+            student_id=student.id, completed=True
+        ).all()
+    }
+    milestone = YearMilestone.query.filter_by(
+        student_id=student.id, year_level=1, milestone_key="essay_training"
+    ).first()
+    if milestone:
+        milestone.status = "complete" if required.issubset(completed) else (
+            "in_progress" if completed else "not_started"
+        )
+        milestone.completed_at = datetime.utcnow() if milestone.status == "complete" else None
+        db.session.commit()
+
 
 YEAR_PATHWAYS = {
     1: {
@@ -805,6 +1022,88 @@ def pathway():
         return redirect(url_for("login"))
     return render_template("pathway.html", student=user, pathway=get_year_pathway(user.year_level or 1))
 
+@app.route("/essay-writeshops")
+def essay_writeshops():
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+
+    progress_rows = EssayWorkshopProgress.query.filter_by(student_id=user.id).all()
+    progress_map = {row.workshop_key: row for row in progress_rows}
+    completed_count = sum(1 for row in progress_rows if row.completed)
+    total = len(ESSAY_WRITESHOPS)
+    percent = round(completed_count / total * 100) if total else 0
+
+    return render_template(
+        "essay_writeshops.html",
+        workshops=ESSAY_WRITESHOPS,
+        progress_map=progress_map,
+        completed_count=completed_count,
+        total=total,
+        percent=percent,
+    )
+
+@app.route("/essay-writeshops/<workshop_key>", methods=["GET", "POST"])
+def essay_writeshop(workshop_key):
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+
+    workshop = get_writeshop(workshop_key)
+    if not workshop:
+        return redirect(url_for("essay_writeshops"))
+
+    progress = EssayWorkshopProgress.query.filter_by(
+        student_id=user.id, workshop_key=workshop_key
+    ).first()
+    if not progress:
+        progress = EssayWorkshopProgress(student_id=user.id, workshop_key=workshop_key)
+        db.session.add(progress)
+        db.session.commit()
+
+    if request.method == "POST":
+        raw_content = request.form.get("content", "")
+        clean_content = sanitize_rich_text(raw_content)
+        action = request.form.get("action", "save")
+
+        # Require actual writing before a workshop can be completed.
+        plain_text = re.sub(r"<[^>]+>", " ", clean_content)
+        plain_text = re.sub(r"\s+", " ", plain_text).strip()
+
+        progress.content = clean_content
+        progress.updated_at = datetime.utcnow()
+
+        if action == "complete":
+            if len(plain_text.split()) < 10:
+                flash("Write a little more before marking this writeshop complete.", "error")
+                db.session.commit()
+                return redirect(url_for("essay_writeshop", workshop_key=workshop_key))
+            progress.completed = True
+            progress.completed_at = datetime.utcnow()
+            log_activity(
+                user.id,
+                "Essay Writeshop",
+                f"Completed: {workshop['title']}",
+                "Independent essay training completed.",
+                "📝",
+                user.id,
+            )
+            flash("Writeshop completed.", "success")
+        else:
+            flash("Writeshop draft saved.", "success")
+
+        db.session.commit()
+        sync_essay_training_milestone(user)
+        return redirect(url_for("essay_writeshop", workshop_key=workshop_key))
+
+    return render_template(
+        "essay_writeshop.html",
+        workshop=workshop,
+        progress=progress,
+        workshops=ESSAY_WRITESHOPS,
+    )
+
+
 @app.route("/essay-lab", methods=["GET", "POST"])
 def essay_lab():
     user = current_user()
@@ -828,8 +1127,9 @@ def essay_lab():
             return redirect(url_for("essay_lab"))
 
         title = request.form.get("title", stage).strip() or stage
-        content = request.form.get("content", "").strip()
-        if not content:
+        content = sanitize_rich_text(request.form.get("content", ""))
+        plain_content = re.sub(r"<[^>]+>", " ", content).strip()
+        if not plain_content:
             flash("Please add your work before submitting.", "error")
             return redirect(url_for("essay_lab"))
 
@@ -889,6 +1189,7 @@ def essay_submission_view(submission_id):
         student=student,
         feedback=feedback,
         viewer=user,
+        display_content=sanitize_rich_text(submission.content),
     )
 
 @app.route("/teacher/essay/<int:submission_id>/review", methods=["POST"])
@@ -1326,6 +1627,7 @@ def delete_user_account_records(target_user):
 
         for model in [
             StudentAcademicProfile,
+            EssayWorkshopProgress,
             YearMilestone,
             CompetencyScore,
             Reflection,
@@ -1928,6 +2230,7 @@ YEAR_MILESTONE_DEFINITIONS = {
     1: {"title": "Foundation", "goal": "Build your story and English foundation.", "milestones": [
         ("first_reflection", "Complete your first reflection"),
         ("story_bank", "Create your Story Bank"),
+        ("essay_training", "Complete the Essay Writeshops"),
         ("first_essay_draft", "Finish your first personal essay draft"),
         ("det_routine", "Build a DET study routine"),
         ("global_activity", "Join at least one school or global activity"),
@@ -2051,6 +2354,7 @@ def reset_all_students_once():
 
         for model in [
             StudentAcademicProfile,
+            EssayWorkshopProgress,
             YearMilestone,
             CompetencyScore,
             Reflection,

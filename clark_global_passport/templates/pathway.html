@@ -21,7 +21,9 @@
             <span class="mini-label">STEP {{ loop.index }}</span>
             <h2>{{ step.title }}</h2>
             <p>{{ step.desc }}</p>
-            {% if 'Essay' in step.action or 'Story' in step.action or 'Draft' in step.action %}
+            {% if step.key == 'essay_basics' %}
+                <a class="button" href="{{ url_for('essay_writeshops') }}">{{ step.action }} →</a>
+            {% elif 'Essay' in step.action or 'Story' in step.action or 'Draft' in step.action %}
                 <a class="button" href="{{ url_for('essay_lab') }}">{{ step.action }} →</a>
             {% elif 'DET' in step.action or 'Readiness' in step.action or 'Score' in step.action %}
                 <a class="button" href="{{ url_for('det_prep') }}">{{ step.action }} →</a>

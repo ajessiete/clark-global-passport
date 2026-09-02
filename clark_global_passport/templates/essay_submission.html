@@ -12,7 +12,7 @@
             </div>
             <span class="essay-status {{ submission.status|lower|replace(' ','-') }}">{{ submission.status }}</span>
         </div>
-        <div class="essay-content">{{ submission.content }}</div>
+        <div class="essay-content rich-output">{{ display_content|safe }}</div>
     </article>
 
     <aside class="essay-feedback-panel">

@@ -340,3 +340,24 @@ Jinja interpreted `year_progress.items` as the dictionary `.items()` method.
 
 - Teacher dashboard now shows only the first 3 Attention Needed items.
 - The See all activity button remains available for the complete activity history.
+
+
+## v10.6 — Essay Writeshops + Word-Style Editor
+
+Essay Training is now a series of eight bilingual mini-writeshops:
+1. Writing Effective Hooks
+2. Building a Strong Introduction
+3. Show, Don't Just Tell
+4. Using Specific Examples
+5. Reflection & Meaning
+6. Connecting Ideas
+7. Writing Strong Conclusions
+8. Editing & Polishing
+
+Each writeshop includes English/Japanese lesson tabs, weak/strong examples, a practice task, a Word-style rich-text editor, word count, local autosave, server-side draft saving, and independent completion.
+
+Completing all eight writeshops automatically completes the Year 1 "Complete the Essay Writeshops" Global Passport milestone. Students do not need teacher approval for writeshops.
+
+The Personal Essay Lab now uses the same Word-style editor. Actual Personal Essay stages remain teacher-gated and keep the existing approval/resubmission workflow.
+
+Rich-text HTML is sanitized server-side before storage/display.
