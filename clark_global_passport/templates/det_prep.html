@@ -1,0 +1,55 @@
+
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('student_dashboard') }}">← Back</a>
+<div class="page-title">
+    <p class="eyebrow">DET MISSION</p>
+    <h1>Train. Test. Learn. Improve.</h1>
+    <p>Small progress is visible progress. Record practice and official results here.</p>
+</div>
+
+<div class="det-quest">
+    <div><span>01</span><strong>Know the Test</strong><small>Understand question types</small></div>
+    <div><span>02</span><strong>Find Your Baseline</strong><small>Take a practice test</small></div>
+    <div><span>03</span><strong>Train Weak Areas</strong><small>Target your lowest skills</small></div>
+    <div><span>04</span><strong>Reach Readiness</strong><small>Build consistent scores</small></div>
+    <div><span>05</span><strong>Take the DET</strong><small>Record your official result</small></div>
+</div>
+
+<div class="grid two">
+<section class="card">
+    <h2>Record a Test</h2>
+    <form method="post" class="form-stack">
+        <label>Type</label>
+        <select name="record_type"><option>Practice</option><option>Official</option></select>
+        <label>Date</label><input type="date" name="test_date">
+        <label>Overall score</label><input type="number" name="score" min="10" max="160" placeholder="e.g. 105">
+        <div class="form-grid">
+            <div><label>Literacy</label><input type="number" name="literacy" min="10" max="160"></div>
+            <div><label>Comprehension</label><input type="number" name="comprehension" min="10" max="160"></div>
+            <div><label>Conversation</label><input type="number" name="conversation" min="10" max="160"></div>
+            <div><label>Production</label><input type="number" name="production" min="10" max="160"></div>
+        </div>
+        <label>What should you work on next?</label>
+        <textarea name="reflection" placeholder="e.g. I need to answer speaking questions faster and use more precise vocabulary."></textarea>
+        <button type="submit">Save Progress</button>
+    </form>
+</section>
+
+<section>
+{% for r in records %}
+<div class="card score-card">
+    <div class="score-main">{{ r.score or '—' }}</div>
+    <div>
+        <span class="pill">{{ r.record_type }}</span>
+        <h3>{{ r.test_date or r.created_at.strftime('%Y-%m-%d') }}</h3>
+        <p>{{ r.reflection }}</p>
+        <small>Literacy {{ r.literacy or '—' }} · Comprehension {{ r.comprehension or '—' }} · Conversation {{ r.conversation or '—' }} · Production {{ r.production or '—' }}</small>
+    </div>
+</div>
+{% else %}
+<div class="card"><p class="muted">No DET records yet. Your first practice score will appear here.</p></div>
+{% endfor %}
+</section>
+</div>
+{% endblock %}

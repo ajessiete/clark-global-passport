@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Login | Clark Global Passport{% endblock %}
+{% block content %}
+<div class="login-shell">
+    <div class="login-card">
+        <div class="logo-large">CLARK <span>GLOBAL</span></div>
+        <h1>Learning Passport</h1>
+        <p class="muted">Think. Investigate. Collaborate. Communicate. Act. Reflect.</p>
+        <form method="post" class="form-stack">
+            <label>Email</label>
+            <input type="email" name="email" required placeholder="you@clark.local">
+            <label>Password</label>
+            <input type="password" name="password" required>
+            <button type="submit">Sign in</button>
+        </form>
+        <div class="register-link">
+            New to Clark Global?
+            <a href="{{ url_for('register') }}">Create a new account</a>
+        </div>
+        <div class="demo-box">
+            <strong>Demo accounts</strong><br>
+            Student: yuki@clark.local / student123<br>
+            Teacher: teacher@clark.local / teacher123
+        </div>
+    </div>
+</div>
+{% endblock %}

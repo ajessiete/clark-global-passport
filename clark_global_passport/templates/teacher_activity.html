@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('teacher_dashboard') }}">← Back to Dashboard</a>
+<div class="page-title">
+    <p class="eyebrow">ACTIVITY LOG</p>
+    <h1>All Recent Activity</h1>
+    <p>{{ total }} recorded events. Showing 5 per page.</p>
+</div>
+
+<section class="card">
+    <div class="updates-feed">
+    {% for item in updates %}
+        <a class="update-item" href="{{ url_for('teacher_student', student_id=item.student.id) }}">
+            <div class="update-icon">{{ item.icon }}</div>
+            <div class="update-main">
+                <div class="update-topline">
+                    <strong>{{ item.student.name }}</strong>
+                    <span>{{ item.type }}</span>
+                </div>
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.detail }}</p>
+            </div>
+            <time>{{ item.time.strftime('%m/%d %H:%M') }}</time>
+        </a>
+    {% else %}
+        <p class="muted">No activity yet.</p>
+    {% endfor %}
+    </div>
+
+    <div class="pagination">
+        {% if page > 1 %}
+        <a class="button secondary" href="{{ url_for('teacher_activity', page=page-1) }}">← Previous</a>
+        {% endif %}
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a class="button secondary" href="{{ url_for('teacher_activity', page=page+1) }}">Next →</a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

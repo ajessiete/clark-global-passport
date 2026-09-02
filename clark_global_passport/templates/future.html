@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('student_dashboard') }}">← Back</a>
+<div class="page-title">
+    <p class="eyebrow">MY FUTURE</p>
+    <h1>Connect today's experiences to tomorrow.</h1>
+</div>
+
+<section class="card narrow">
+<form method="post" class="form-stack">
+    <label>Universities / programs I am interested in</label>
+    <input name="university_interest" value="{{ goal.university_interest if goal else '' }}">
+    <label>Fields I may want to study</label>
+    <input name="field_interest" value="{{ goal.field_interest if goal else '' }}">
+    <label>Careers / problems I am interested in</label>
+    <input name="career_interest" value="{{ goal.career_interest if goal else '' }}">
+    <label>Experiences that could become part of my personal statement</label>
+    <textarea name="personal_statement_ideas">{{ goal.personal_statement_ideas if goal else '' }}</textarea>
+    <label>My next concrete step</label>
+    <textarea name="next_step">{{ goal.next_step if goal else '' }}</textarea>
+    <button type="submit">Save My Plan</button>
+</form>
+</section>
+{% endblock %}

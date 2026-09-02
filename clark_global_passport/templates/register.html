@@ -1,0 +1,70 @@
+
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-shell">
+    <section class="card register-card">
+        <a class="back-button" href="{{ url_for('login') }}">← Back to Sign In</a>
+        <p class="eyebrow">CLARK GLOBAL</p>
+        <h1>Create an Account</h1>
+        <p class="muted">Join the three-year international university preparation pathway.</p>
+
+        <form method="post" class="form-stack" id="registerForm">
+            <label>Full name</label>
+            <input name="name" required placeholder="e.g. Yuki Tanaka">
+
+            <label>Email</label>
+            <input type="email" name="email" required placeholder="name@example.com">
+
+            <label>Account type</label>
+            <div class="role-picker">
+                <label class="role-option">
+                    <input type="radio" name="role" value="student" checked onchange="toggleStudentFields()">
+                    <span>🎓 Student</span>
+                </label>
+                <label class="role-option">
+                    <input type="radio" name="role" value="teacher" onchange="toggleStudentFields()">
+                    <span>🧑‍🏫 Teacher</span>
+                </label>
+            </div>
+
+            <div id="studentFields">
+                <label>Starting year level</label>
+                <select name="year_level">
+                    <option value="1">Year 1</option>
+                    <option value="2">Year 2</option>
+                    <option value="3">Year 3</option>
+                </select>
+
+                <label class="check-option">
+                    <input type="checkbox" name="is_transfer">
+                    <span>
+                        <strong>I am transferring into Clark</strong>
+                        <small>Choose the year level you are entering now.</small>
+                    </span>
+                </label>
+            </div>
+
+            <div id="teacherNotice" class="teacher-notice" style="display:none">
+                <strong>Teacher accounts require approval.</strong>
+                <p>An existing teacher must approve the account before it can be used.</p>
+            </div>
+
+            <label>Password</label>
+            <input type="password" name="password" minlength="8" required>
+
+            <label>Confirm password</label>
+            <input type="password" name="confirm_password" minlength="8" required>
+
+            <button type="submit">Create Account</button>
+        </form>
+    </section>
+</div>
+
+<script>
+function toggleStudentFields() {
+    const role = document.querySelector('input[name="role"]:checked').value;
+    document.getElementById('studentFields').style.display = role === 'student' ? 'block' : 'none';
+    document.getElementById('teacherNotice').style.display = role === 'teacher' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

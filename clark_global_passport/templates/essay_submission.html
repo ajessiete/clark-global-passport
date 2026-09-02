@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{% if viewer.role == 'teacher' %}{{ url_for('teacher_student', student_id=student.id) }}{% else %}{{ url_for('essay_lab') }}{% endif %}">← Back</a>
+
+<div class="essay-document-layout">
+    <article class="essay-paper">
+        <div class="essay-paper-head">
+            <div>
+                <p class="eyebrow">{{ submission.stage }}</p>
+                <h1>{{ submission.title }}</h1>
+                <p>{{ student.name }} • Version {{ submission.version }} • {{ submission.submitted_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            </div>
+            <span class="essay-status {{ submission.status|lower|replace(' ','-') }}">{{ submission.status }}</span>
+        </div>
+        <div class="essay-content">{{ submission.content }}</div>
+    </article>
+
+    <aside class="essay-feedback-panel">
+        <p class="eyebrow">TEACHER FEEDBACK</p>
+        <h2>Comments & Decisions</h2>
+
+        {% for f in feedback %}
+        <div class="feedback-entry">
+            <span class="pill">{{ f.decision }}</span>
+            <p>{{ f.comment }}</p>
+            <small>{{ f.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+        </div>
+        {% else %}
+        <p class="muted">No teacher feedback yet.</p>
+        {% endfor %}
+
+        {% if viewer.role == 'teacher' %}
+        <form method="post" action="{{ url_for('teacher_review_essay', submission_id=submission.id) }}" class="form-stack review-form">
+            <label>Comment / Feedback</label>
+            <textarea name="comment" placeholder="Give specific feedback the student can act on."></textarea>
+            <div class="review-buttons">
+                <button type="submit" name="decision" value="Comment" class="secondary">Add Comment</button>
+                {% if submission.status != 'Approved' %}
+                <button type="submit" name="decision" value="Request Resubmission" class="resubmit-button">↻ Ask for Resubmission</button>
+                <button type="submit" name="decision" value="Approve">✓ Approve & Unlock Next</button>
+                {% endif %}
+            </div>
+        </form>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

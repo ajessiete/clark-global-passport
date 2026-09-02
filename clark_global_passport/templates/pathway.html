@@ -1,0 +1,37 @@
+
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('student_dashboard') }}">← Back</a>
+<div class="page-title">
+    <p class="eyebrow">YEAR {{ student.year_level }} • {{ pathway.label }}</p>
+    <h1>{{ pathway.title }}</h1>
+    <p>{{ pathway.mission }}</p>
+</div>
+
+<div class="mission-box">
+    <strong>🎯 Your mission this year</strong>
+    <span>{{ pathway.goal }}</span>
+</div>
+
+<div class="mission-roadmap">
+{% for step in pathway.steps %}
+    <section class="mission-step">
+        <div class="mission-number">{{ step.icon }}</div>
+        <div class="mission-content">
+            <span class="mini-label">STEP {{ loop.index }}</span>
+            <h2>{{ step.title }}</h2>
+            <p>{{ step.desc }}</p>
+            {% if 'Essay' in step.action or 'Story' in step.action or 'Draft' in step.action %}
+                <a class="button" href="{{ url_for('essay_lab') }}">{{ step.action }} →</a>
+            {% elif 'DET' in step.action or 'Readiness' in step.action or 'Score' in step.action %}
+                <a class="button" href="{{ url_for('det_prep') }}">{{ step.action }} →</a>
+            {% elif 'Universit' in step.action or 'Shortlist' in step.action or 'List' in step.action or 'Requirement' in step.action or 'Apply' in step.action or 'Submission' in step.action %}
+                <a class="button" href="{{ url_for('universities') }}">{{ step.action }} →</a>
+            {% else %}
+                <a class="button secondary" href="{{ url_for('reflections') }}">{{ step.action }} →</a>
+            {% endif %}
+        </div>
+    </section>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('student_dashboard') }}">← Back</a>
+
+<div class="page-title">
+    <p class="eyebrow">PERSONAL ESSAY LAB</p>
+    <h1>Complete one task. Get feedback. Unlock the next.</h1>
+    <p>Your essay pathway stays with you even when you move to the next school year.</p>
+</div>
+
+<div class="essay-gate-grid">
+{% for stage in stages %}
+    {% set latest = latest_by_stage.get(stage) %}
+    {% set idx = loop.index0 %}
+    <div class="essay-gate {% if latest and latest.status == 'Approved' %}approved{% elif idx == unlocked_index %}current{% elif idx > unlocked_index %}locked{% endif %}">
+        <div class="stage-num">{{ loop.index }}</div>
+        <div>
+            <strong>{{ stage }}</strong>
+            {% if latest %}
+                <span class="essay-status {{ latest.status|lower|replace(' ','-') }}">{{ latest.status }}</span>
+            {% elif idx == unlocked_index %}
+                <span class="essay-status open">Open</span>
+            {% else %}
+                <span class="essay-status locked-label">Locked</span>
+            {% endif %}
+        </div>
+    </div>
+{% endfor %}
+</div>
+
+{% if all_approved %}
+<section class="card success-panel">
+    <p class="eyebrow">ESSAY PATHWAY COMPLETE</p>
+    <h2>✓ Final Version approved</h2>
+    <p>Your teacher has approved every stage of your personal essay pathway.</p>
+</section>
+{% else %}
+<section class="card current-task-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">CURRENT TASK</p>
+            <h2>{{ current_stage }}</h2>
+        </div>
+        {% if current_latest %}
+            <span class="essay-status {{ current_latest.status|lower|replace(' ','-') }}">{{ current_latest.status }}</span>
+        {% else %}
+            <span class="essay-status open">Ready</span>
+        {% endif %}
+    </div>
+
+    {% if current_latest and current_latest.status == 'Pending Review' %}
+        <div class="waiting-panel">
+            <strong>Waiting for teacher review</strong>
+            <p>You cannot unlock the next task until your teacher approves this one.</p>
+            <a class="button secondary" target="_blank" href="{{ url_for('essay_submission_view', submission_id=current_latest.id) }}">Open submitted work ↗</a>
+        </div>
+    {% else %}
+        {% if current_latest and current_latest.status == 'Resubmission Requested' %}
+        <div class="resubmit-panel">
+            <strong>🔁 Your teacher asked for a revision.</strong>
+            <p>Open your previous submission and feedback, make the requested changes, then submit a new version below.</p>
+            <a class="button secondary" target="_blank" href="{{ url_for('essay_submission_view', submission_id=current_latest.id) }}">View feedback & previous version ↗</a>
+        </div>
+        {% endif %}
+
+        <form method="post" class="form-stack essay-submit-form">
+            <input type="hidden" name="stage" value="{{ current_stage }}">
+            <label>Task title</label>
+            <input name="title" required value="{{ current_stage }}">
+            <label>Your work</label>
+            <textarea class="essay-box" name="content" required placeholder="Write or paste your work here...">{% if current_latest and current_latest.status == 'Resubmission Requested' %}{{ current_latest.content }}{% endif %}</textarea>
+            <button type="submit">{% if current_latest and current_latest.status == 'Resubmission Requested' %}Submit Revised Version{% else %}Submit for Teacher Review{% endif %}</button>
+        </form>
+    {% endif %}
+</section>
+{% endif %}
+
+<section class="card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">MY SUBMISSION HISTORY</p>
+            <h2>Old outputs & revisions</h2>
+        </div>
+    </div>
+
+    <div class="submission-history">
+    {% for item in submissions|reverse %}
+        <a class="submission-row" target="_blank" href="{{ url_for('essay_submission_view', submission_id=item.id) }}">
+            <div>
+                <strong>{{ item.stage }}</strong>
+                <span>Version {{ item.version }} • {{ item.title }}</span>
+            </div>
+            <span class="essay-status {{ item.status|lower|replace(' ','-') }}">{{ item.status }}</span>
+            <time>{{ item.submitted_at.strftime('%Y-%m-%d %H:%M') }}</time>
+            <span>Open full page ↗</span>
+        </a>
+    {% else %}
+        <p class="muted">No essay submissions yet.</p>
+    {% endfor %}
+    </div>
+</section>
+{% endblock %}

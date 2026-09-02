@@ -1,0 +1,170 @@
+
+{% extends "base.html" %}
+{% block content %}
+<section class="hero pathway-hero">
+    <div>
+        <p class="eyebrow">YEAR {{ student.year_level }} • {{ pathway.label }}</p>
+        <h1>{{ pathway.title }}</h1>
+        <p>{{ pathway.mission }}</p>
+        <div class="goal-chip">🎯 Year Goal: {{ pathway.goal }}</div>
+    </div>
+    <div class="hero-badge">YEAR<br>{{ student.year_level }}</div>
+</section>
+
+<section class="card journey-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">YOUR ROADMAP</p>
+            <h2>One step at a time.</h2>
+        </div>
+        <a href="{{ url_for('pathway') }}">Open full pathway →</a>
+    </div>
+    <div class="journey-track">
+        {% for step in pathway.steps %}
+        <div class="journey-step">
+            <div class="step-number">{{ step.icon }}</div>
+            <div>
+                <h3>{{ step.title }}</h3>
+                <p>{{ step.desc }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<div class="grid three action-grid">
+    <a class="action-card essay" href="{{ url_for('essay_lab') }}">
+        <span class="action-icon">✍️</span>
+        <p class="eyebrow">PERSONAL ESSAY</p>
+        <h2>Essay Lab</h2>
+        <p>Build your story step-by-step, from ideas to a polished university essay.</p>
+        <strong>Continue →</strong>
+    </a>
+
+    <a class="action-card det" href="{{ url_for('det_prep') }}">
+        <span class="action-icon">🎧</span>
+        <p class="eyebrow">ENGLISH TEST</p>
+        <h2>DET Mission</h2>
+        <p>Train in small stages, record practice scores, and prepare for the official test.</p>
+        <strong>Continue →</strong>
+    </a>
+
+    <a class="action-card uni" href="{{ url_for('universities') }}">
+        <span class="action-icon">🌍</span>
+        <p class="eyebrow">MY DESTINATIONS</p>
+        <h2>University Explorer</h2>
+        <p>Discover schools, compare options, build your shortlist, and track applications.</p>
+        <strong>Explore →</strong>
+    </a>
+</div>
+
+
+{% if student.year_level < 3 %}
+<section class="card promotion-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">MOVE TO THE NEXT YEAR</p>
+            <h2>Ready for Year {{ student.year_level + 1 }}?</h2>
+        </div>
+        {% if pending_promotion %}
+            <span class="status-warn">Waiting for teacher approval</span>
+        {% elif last_promotion and last_promotion.status == 'Rejected' %}
+            <span class="status-danger">Last request not approved</span>
+        {% endif %}
+    </div>
+
+    {% if pending_promotion %}
+        <p>Your request for Year {{ pending_promotion.requested_year }} has been sent. Your current pathway will stay as Year {{ student.year_level }} until a teacher approves it.</p>
+        <div class="request-summary">
+            <strong>Requested:</strong> {{ pending_promotion.requested_at.strftime('%Y-%m-%d %H:%M') }}
+            {% if pending_promotion.reason %}<br><strong>Your note:</strong> {{ pending_promotion.reason }}{% endif %}
+        </div>
+    {% else %}
+        {% if last_promotion and last_promotion.status == 'Rejected' and last_promotion.teacher_comment %}
+        <div class="teacher-response">
+            <strong>Teacher comment:</strong>
+            <p>{{ last_promotion.teacher_comment }}</p>
+        </div>
+        {% endif %}
+        <form method="post" action="{{ url_for('request_promotion') }}" class="promotion-form">
+            <textarea name="reason" placeholder="Optional: tell your teacher why you're ready for the next year."></textarea>
+            <button type="submit">Send Year {{ student.year_level + 1 }} Request →</button>
+        </form>
+    {% endif %}
+</section>
+{% else %}
+<section class="card graduation-card">
+    <p class="eyebrow">YEAR 3</p>
+    <h2>You are in the final year of the pathway.</h2>
+    <p>Your focus now is completing applications and reaching the overseas application goal.</p>
+</section>
+{% endif %}
+
+
+{% if student.year_level == 3 %}
+<section class="card year3-student-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">MY YEAR 3 PROGRESS</p>
+            <h2>From shortlist to submission</h2>
+        </div>
+        {% set completed = milestones|selectattr('status','equalto','Complete')|list|length %}
+        <strong>{{ completed }} / {{ milestones|length }}</strong>
+    </div>
+    {% if milestones %}
+    <div class="big-progress"><div style="width: {{ (completed / milestones|length * 100)|round }}%"></div></div>
+    {% endif %}
+    <div class="student-milestone-grid">
+    {% for m in milestones %}
+        <div class="student-milestone {{ m.status|lower|replace(' ','-') }}">
+            <span>{% if m.status == 'Complete' %}✓{% elif m.status == 'In Progress' %}●{% else %}○{% endif %}</span>
+            <div><strong>{{ m.milestone }}</strong>{% if m.note %}<small>{{ m.note }}</small>{% endif %}</div>
+        </div>
+    {% endfor %}
+    </div>
+</section>
+
+<div class="grid two">
+<section class="card">
+    <p class="eyebrow">MY ADVISER</p>
+    <h2>{{ adviser.name if adviser else 'Not assigned yet' }}</h2>
+    <p>{% if adviser %}This teacher is your main adviser for Year 3 university consultations.{% else %}A teacher will assign your Year 3 adviser here.{% endif %}</p>
+</section>
+<section class="card">
+    <p class="eyebrow">RECENT CONSULTATIONS</p>
+    <h2>What we agreed on</h2>
+    {% for c in consultations %}
+        <div class="mini-consult">
+            <strong>{{ c.topic }}</strong>
+            <span>{{ c.consultation_date or c.created_at.strftime('%Y-%m-%d') }}</span>
+            {% if c.action_items %}<p>{{ c.action_items }}</p>{% endif %}
+        </div>
+    {% else %}<p class="muted">No consultation records yet.</p>{% endfor %}
+</section>
+</div>
+{% endif %}
+
+<div class="grid two">
+    <section class="card">
+        <p class="eyebrow">MY GROWTH</p>
+        <h2>Global Competencies</h2>
+        {% for competency, score in scores.items() %}
+        <div class="skill-row">
+            <div class="skill-label"><span>{{ competency }}</span><strong>{{ score }}/10</strong></div>
+            <div class="progress"><div class="progress-fill" style="width: {{ score * 10 }}%"></div></div>
+        </div>
+        {% endfor %}
+    </section>
+
+    <section class="card">
+        <p class="eyebrow">LEARNING EVIDENCE</p>
+        <h2>Your Passport</h2>
+        <div class="stat-grid">
+            <div class="stat"><strong>{{ projects|length }}</strong><span>Projects</span></div>
+            <div class="stat"><strong>{{ reflections|length }}</strong><span>Reflections</span></div>
+            <div class="stat"><strong>{{ portfolio_count }}</strong><span>Portfolio</span></div>
+        </div>
+        <a class="button secondary" href="{{ url_for('portfolio') }}">Open Portfolio</a>
+    </section>
+</div>
+{% endblock %}

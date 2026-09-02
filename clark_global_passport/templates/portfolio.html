@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('student_dashboard') }}">← Back</a>
+<div class="page-title">
+    <p class="eyebrow">PORTFOLIO</p>
+    <h1>Evidence of who you are becoming.</h1>
+    <p>Save meaningful work, awards, service, presentations, and experiences.</p>
+</div>
+
+<div class="grid two">
+<section class="card">
+    <h2>Add Evidence</h2>
+    <form method="post" class="form-stack">
+        <label>Title</label><input name="title" required>
+        <label>Category</label>
+        <select name="category">
+            <option>Project</option><option>Competition</option><option>Presentation</option>
+            <option>Service</option><option>International Experience</option><option>Academic Work</option>
+            <option>Certificate</option><option>Other</option>
+        </select>
+        <label>Description</label><textarea name="description" required></textarea>
+        <label>Evidence / file note / link</label><input name="evidence" placeholder="e.g. certificate.pdf or teacher feedback">
+        <button type="submit">Add to Portfolio</button>
+    </form>
+</section>
+
+<section>
+{% for item in items %}
+<article class="card compact">
+    <span class="pill light">{{ item.category }}</span>
+    <h3>{{ item.title }}</h3>
+    <p>{{ item.description }}</p>
+    {% if item.evidence %}<small>Evidence: {{ item.evidence }}</small>{% endif %}
+</article>
+{% else %}
+<div class="card"><p class="muted">Your portfolio is empty.</p></div>
+{% endfor %}
+</section>
+</div>
+{% endblock %}

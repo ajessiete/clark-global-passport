@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('teacher_dashboard') }}">← Back</a>
+<div class="page-title">
+    <p class="eyebrow">STUDENT ADVISER VIEW</p>
+    <h1>{{ student.name }}</h1>
+    <p>Year {{ student.year_level }} • {{ pathway.label }} — {{ pathway.title }}</p>
+</div>
+
+<section class="hero adviser-hero">
+    <div>
+        <p class="eyebrow">THIS YEAR'S MISSION</p>
+        <h2>{{ pathway.goal }}</h2>
+        <p>{{ pathway.mission }}</p>
+    </div>
+    <div class="hero-badge">YEAR<br>{{ student.year_level }}</div>
+</section>
+
+<section class="card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">PERSONAL ESSAY</p>
+            <h2>Teacher-Gated Essay Progress</h2>
+        </div>
+        {% set pending = essays|selectattr('status','equalto','Pending Review')|list %}
+        {% if pending %}<span class="status-warn">{{ pending|length }} waiting for review</span>{% endif %}
+    </div>
+
+    <div class="essay-teacher-list">
+    {% for e in essays %}
+        <a class="essay-teacher-row" target="_blank" href="{{ url_for('essay_submission_view', submission_id=e.id) }}">
+            <div>
+                <strong>{{ e.stage }}</strong>
+                <span>Version {{ e.version }} • {{ e.title }}</span>
+            </div>
+            <span class="essay-status {{ e.status|lower|replace(' ','-') }}">{{ e.status }}</span>
+            <time>{{ e.submitted_at.strftime('%Y-%m-%d') }}</time>
+            <span>Review / Open ↗</span>
+        </a>
+    {% else %}
+        <p class="muted">No essay submissions yet.</p>
+    {% endfor %}
+    </div>
+</section>
+
+<div class="grid two">
+<section class="card">
+    <p class="eyebrow">DUOLINGO ENGLISH TEST</p>
+    <h2>DET Progress</h2>
+    {% if det_records %}
+        {% set latest = det_records[0] %}
+        <div class="det-summary">
+            <div class="score-main">{{ latest.score or '—' }}</div>
+            <div>
+                <span class="pill">{{ latest.record_type }}</span>
+                <p>{{ latest.reflection }}</p>
+            </div>
+        </div>
+        <div class="subscore-grid">
+            <div><span>Literacy</span><strong>{{ latest.literacy or '—' }}</strong></div>
+            <div><span>Comprehension</span><strong>{{ latest.comprehension or '—' }}</strong></div>
+            <div><span>Conversation</span><strong>{{ latest.conversation or '—' }}</strong></div>
+            <div><span>Production</span><strong>{{ latest.production or '—' }}</strong></div>
+        </div>
+    {% else %}<p class="muted">No DET record yet.</p>{% endif %}
+</section>
+
+<section class="card">
+    <p class="eyebrow">GLOBAL COMPETENCIES</p>
+    <h2>Competency Profile</h2>
+    {% for competency, score in scores.items() %}
+    <form method="post" action="{{ url_for('teacher_update_competency', student_id=student.id) }}" class="teacher-skill">
+        <input type="hidden" name="competency" value="{{ competency }}">
+        <div>
+            <strong>{{ competency }}</strong>
+            <div class="progress"><div class="progress-fill" style="width:{{ score * 10 }}%"></div></div>
+        </div>
+        <input type="number" min="1" max="10" name="score" value="{{ score }}">
+        <button class="small secondary">Save</button>
+    </form>
+    {% endfor %}
+</section>
+</div>
+
+<section class="card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">UNIVERSITY RESEARCH & APPLICATIONS</p>
+            <h2>Destinations</h2>
+        </div>
+        {% set submitted = universities|selectattr('applied')|list|length %}
+        {% if student.year_level == 3 %}
+            {% if submitted >= 1 %}
+                <span class="status-good big">✓ Overseas application goal achieved</span>
+            {% else %}
+                <span class="status-danger big">0 / 1 minimum submitted</span>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    {% if universities %}
+    <div class="uni-teacher-grid">
+        {% for u in universities %}
+        <div class="uni-teacher-card">
+            <div class="section-heading">
+                <span class="pill">{{ u.status }}</span>
+                <span>{{ u.country }}</span>
+            </div>
+            <h3>{{ u.university }}</h3>
+            <p><strong>{{ u.program }}</strong></p>
+            <p>{{ u.fit_reason }}</p>
+            <small>Deadline: {{ u.deadline or 'TBD' }} · DET: {{ u.det_requirement or 'TBD' }}</small>
+            {% if u.applied %}<div class="submitted-badge">✓ Submitted {{ u.submitted_date }}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}<p class="muted">No universities researched yet.</p>{% endif %}
+</section>
+
+{% if student.year_level == 3 %}
+<section class="card year3-progress-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">YEAR 3 PROGRESS TRACKER</p>
+            <h2>Application Readiness</h2>
+        </div>
+        {% set completed = milestones|selectattr('status','equalto','Complete')|list|length %}
+        <strong>{{ completed }} / {{ milestones|length }} complete</strong>
+    </div>
+    {% if milestones %}
+    <div class="big-progress"><div style="width: {{ (completed / milestones|length * 100)|round }}%"></div></div>
+    {% endif %}
+    <div class="milestone-list">
+    {% for m in milestones %}
+        <form method="post" action="{{ url_for('update_year3_progress', student_id=student.id, milestone_id=m.id) }}" class="milestone-row">
+            <div>
+                <strong>{{ m.milestone }}</strong>
+                <input name="note" value="{{ m.note }}" placeholder="Optional note">
+            </div>
+            <select name="status">
+                {% for status in ['Not Started','In Progress','Complete'] %}
+                <option {% if m.status == status %}selected{% endif %}>{{ status }}</option>
+                {% endfor %}
+            </select>
+            <button class="small secondary">Save</button>
+        </form>
+    {% endfor %}
+    </div>
+</section>
+
+<div class="grid two">
+<section class="card">
+    <p class="eyebrow">ADVISER IN CHARGE</p>
+    <h2>{{ adviser.name if adviser else 'Not assigned yet' }}</h2>
+    <form method="post" action="{{ url_for('assign_adviser', student_id=student.id) }}" class="form-stack">
+        <label>Assign adviser</label>
+        <select name="adviser_id">
+            <option value="">— No adviser —</option>
+            {% for t in teachers %}
+            <option value="{{ t.id }}" {% if adviser and adviser.id == t.id %}selected{% endif %}>{{ t.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Update Adviser</button>
+    </form>
+</section>
+
+<section class="card">
+    <p class="eyebrow">NEW CONSULTATION</p>
+    <h2>Record a Meeting</h2>
+    <form method="post" action="{{ url_for('add_consultation', student_id=student.id) }}" class="form-stack">
+        <label>Date</label><input type="date" name="consultation_date">
+        <label>Topic</label><input name="topic" required placeholder="e.g. University shortlist review">
+        <label>What did you discuss?</label><textarea name="discussion" required></textarea>
+        <label>Agreed action items</label><textarea name="action_items"></textarea>
+        <label>Next meeting</label><input type="date" name="next_meeting">
+        <button type="submit">Save Consultation</button>
+    </form>
+</section>
+</div>
+
+<section class="card">
+    <p class="eyebrow">CONSULTATION HISTORY</p>
+    <h2>Previous Meetings</h2>
+    <div class="consultation-list">
+    {% for c in consultations %}
+        <article class="consultation-entry">
+            <div class="section-heading">
+                <div>
+                    <strong>{{ c.topic }}</strong>
+                    <span>{{ c.consultation_date or c.created_at.strftime('%Y-%m-%d') }}</span>
+                </div>
+                {% if c.next_meeting %}<span class="pill">Next: {{ c.next_meeting }}</span>{% endif %}
+            </div>
+            <p>{{ c.discussion }}</p>
+            {% if c.action_items %}<div class="action-note"><strong>Action items:</strong> {{ c.action_items }}</div>{% endif %}
+        </article>
+    {% else %}
+        <p class="muted">No consultations recorded yet.</p>
+    {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<div class="grid two">
+<section class="card">
+    <p class="eyebrow">TEACHER SUPPORT</p>
+    <h2>Add Adviser Note</h2>
+    <form method="post" action="{{ url_for('teacher_add_note', student_id=student.id) }}" class="form-stack">
+        <label>Category</label>
+        <select name="category">
+            <option>General</option><option>Essay</option><option>DET</option>
+            <option>University Research</option><option>Application</option><option>Wellbeing / Motivation</option>
+        </select>
+        <label>Feedback / observation</label>
+        <textarea name="note" required></textarea>
+        <label>Next goal</label>
+        <input name="next_goal">
+        <button type="submit">Save Adviser Note</button>
+    </form>
+</section>
+
+<section class="card">
+    <p class="eyebrow">ADVISER HISTORY</p>
+    <h2>Recent Notes</h2>
+    {% for n in notes %}
+    <div class="note-item">
+        <span class="pill light">{{ n.category }}</span>
+        <p>{{ n.note }}</p>
+        {% if n.next_goal %}<strong>Next goal: {{ n.next_goal }}</strong>{% endif %}
+        <small>{{ n.created_at.strftime('%Y-%m-%d') }}</small>
+    </div>
+    {% else %}<p class="muted">No teacher notes yet.</p>{% endfor %}
+</section>
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('student_dashboard') }}">← Back</a>
+<div class="page-title">
+    <p class="eyebrow">UNIVERSITY EXPLORER</p>
+    <h1>Find a place that fits your future.</h1>
+    {% if student.year_level == 1 %}
+    <p>You do not need to choose yet. Start noticing countries, subjects, and university environments that interest you.</p>
+    {% elif student.year_level == 2 %}
+    <p>Your mission: research widely, compare carefully, and build a realistic shortlist.</p>
+    {% else %}
+    <p>Your Year 3 goal: submit at least <strong>one overseas university application</strong>.</p>
+    {% endif %}
+</div>
+
+{% set applied_count = items|selectattr('applied')|list|length %}
+{% if student.year_level == 3 %}
+<div class="application-goal {% if applied_count >= 1 %}complete{% endif %}">
+    <div class="goal-ring">{{ applied_count }}</div>
+    <div>
+        <span class="mini-label">OVERSEAS APPLICATION GOAL</span>
+        {% if applied_count >= 1 %}
+        <h2>Goal achieved 🎉</h2><p>You have recorded at least one overseas university application.</p>
+        {% else %}
+        <h2>1 application minimum</h2><p>Research → prepare → submit. Your first overseas application is the target.</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<section class="card">
+    <h2>Add a University</h2>
+    <form method="post" class="form-grid">
+        <div><label>University</label><input name="university" required></div>
+        <div><label>Country</label><input name="country"></div>
+        <div><label>Program / Major</label><input name="program"></div>
+        <div><label>Application deadline</label><input name="deadline" placeholder="e.g. Jan 15, 2027"></div>
+        <div><label>DET requirement</label><input name="det_requirement" placeholder="e.g. 120"></div>
+        <div><label>Tuition / scholarship note</label><input name="tuition_note"></div>
+        <div><label>Status</label>
+            <select name="status"><option>Researching</option><option>Interested</option><option>Shortlisted</option><option>Applying</option></select>
+        </div>
+        <div class="full"><label>Why might this university fit you?</label><textarea name="fit_reason"></textarea></div>
+        <div class="full"><button type="submit">Add University</button></div>
+    </form>
+</section>
+
+<div class="uni-grid">
+{% for item in items %}
+<article class="card uni-card">
+    <div class="section-heading">
+        <span class="pill">{{ item.status }}</span>
+        <span class="country">{{ item.country }}</span>
+    </div>
+    <h2>{{ item.university }}</h2>
+
+    <div class="status-flow">
+        {% for stage in ['Researching','Interested','Shortlisted','Applying','Submitted'] %}
+            <span class="{% if item.status == stage %}active{% elif item.applied and stage == 'Submitted' %}active{% endif %}">{{ stage }}</span>
+        {% endfor %}
+    </div>
+
+    <details class="edit-panel">
+        <summary>Edit / Update Progress</summary>
+        <form method="post" action="{{ url_for('update_university', item_id=item.id) }}" class="form-stack update-uni-form">
+            <label>Country</label>
+            <input name="country" value="{{ item.country }}">
+            <label>Program / Major</label>
+            <input name="program" value="{{ item.program }}">
+            <label>Application deadline</label>
+            <input name="deadline" value="{{ item.deadline }}">
+            <label>DET requirement</label>
+            <input name="det_requirement" value="{{ item.det_requirement }}">
+            <label>Tuition / scholarship note</label>
+            <input name="tuition_note" value="{{ item.tuition_note }}">
+            <label>Status</label>
+            <select name="status">
+                {% for stage in ['Researching','Interested','Shortlisted','Applying'] %}
+                    <option {% if item.status == stage %}selected{% endif %}>{{ stage }}</option>
+                {% endfor %}
+            </select>
+            <label>Why might this university fit you?</label>
+            <textarea name="fit_reason">{{ item.fit_reason }}</textarea>
+            <button type="submit" class="secondary">Save Changes</button>
+        </form>
+    </details>
+
+    <p><strong>{{ item.program }}</strong></p>
+    <p>{{ item.fit_reason }}</p>
+    <div class="uni-meta">
+        <span>📅 {{ item.deadline or 'Deadline TBD' }}</span>
+        <span>🎧 DET {{ item.det_requirement or 'TBD' }}</span>
+        <span>💰 {{ item.tuition_note or 'Research needed' }}</span>
+    </div>
+
+    {% if student.year_level == 3 and not item.applied %}
+    <form method="post" action="{{ url_for('mark_applied', item_id=item.id) }}" class="submit-box">
+        <input type="date" name="submitted_date">
+        <button type="submit">✓ I Submitted This Application</button>
+    </form>
+    {% elif item.applied %}
+    <div class="submitted-badge">✓ Submitted {{ item.submitted_date }}</div>
+    {% endif %}
+</article>
+{% else %}
+<div class="card"><p class="muted">No universities saved yet.</p></div>
+{% endfor %}
+</div>
+{% endblock %}

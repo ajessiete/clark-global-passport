@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('student_dashboard') }}">← Back</a>
+<div class="page-title">
+    <p class="eyebrow">INQUIRY & ACTION</p>
+    <h1>Clark Global Challenge</h1>
+    <p>Question → Investigate → Create → Act → Reflect → Present</p>
+</div>
+
+<section class="card">
+    <h2>Start a Project</h2>
+    <form method="post" class="form-grid">
+        <div><label>Project title</label><input name="title" required></div>
+        <div><label>Stage</label>
+            <select name="stage">
+                <option>Question</option><option>Investigate</option><option>Create</option>
+                <option>Action</option><option>Reflect</option><option>Present</option>
+            </select>
+        </div>
+        <div class="full"><label>Inquiry question</label><textarea name="question" required placeholder="What problem, issue, or question do you want to explore?"></textarea></div>
+        <div class="full"><label>What are you working on now?</label><textarea name="description"></textarea></div>
+        <div class="full"><label>Next action</label><textarea name="next_action"></textarea></div>
+        <div class="full"><button type="submit">Create Project</button></div>
+    </form>
+</section>
+
+<div class="project-grid">
+{% for item in items %}
+<article class="card">
+    <span class="pill">{{ item.stage }}</span>
+    <h2>{{ item.title }}</h2>
+    <p class="question">{{ item.question }}</p>
+    <form method="post" action="{{ url_for('update_project', project_id=item.id) }}" class="form-stack">
+        <label>Stage</label>
+        <select name="stage">
+        {% for stage in ['Question','Investigate','Create','Action','Reflect','Present'] %}
+            <option {% if stage == item.stage %}selected{% endif %}>{{ stage }}</option>
+        {% endfor %}
+        </select>
+        <label>Current work</label>
+        <textarea name="description">{{ item.description }}</textarea>
+        <label>Next action</label>
+        <textarea name="next_action">{{ item.next_action }}</textarea>
+        <button class="secondary" type="submit">Update</button>
+    </form>
+</article>
+{% endfor %}
+</div>
+{% endblock %}

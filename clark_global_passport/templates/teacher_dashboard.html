@@ -1,0 +1,221 @@
+
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">
+    <p class="eyebrow">INTERNATIONAL COURSE</p>
+    <h1>Teacher Dashboard</h1>
+    <p>See where every student is in the three-year university preparation journey.</p>
+</div>
+
+
+
+{% if pending_essays %}
+<section class="card approval-card essay-review-queue">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">ESSAYS WAITING FOR REVIEW</p>
+            <h2>{{ pending_essays|length }} submission{% if pending_essays|length != 1 %}s{% endif %}</h2>
+        </div>
+        <span class="status-warn">Teacher action needed</span>
+    </div>
+    <div class="approval-list">
+    {% for essay in pending_essays %}
+        <div class="approval-item">
+            <div>
+                <strong>{{ essay.student_id }}</strong>
+                {% for row in rows %}
+                    {% if row.student.id == essay.student_id %}
+                        <h3>{{ row.student.name }}</h3>
+                    {% endif %}
+                {% endfor %}
+                <p>{{ essay.stage }} • Version {{ essay.version }}</p>
+            </div>
+            <a class="button" target="_blank" href="{{ url_for('essay_submission_view', submission_id=essay.id) }}">Review Essay ↗</a>
+        </div>
+    {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if pending_promotions %}
+<section class="card approval-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">YEAR LEVEL REQUESTS</p>
+            <h2>{{ pending_promotions|length }} promotion request{% if pending_promotions|length != 1 %}s{% endif %}</h2>
+        </div>
+        <span class="status-warn">Teacher action needed</span>
+    </div>
+
+    <div class="approval-list">
+    {% for req in pending_promotions %}
+        {% set student = req.student_id %}
+        <div class="approval-item">
+            <div>
+                <strong>
+                    {% for row in rows %}
+                        {% if row.student.id == req.student_id %}{{ row.student.name }}{% endif %}
+                    {% endfor %}
+                </strong>
+                <p>Year {{ req.current_year }} → Year {{ req.requested_year }}</p>
+                {% if req.reason %}<small>{{ req.reason }}</small>{% endif %}
+            </div>
+            <div class="approval-actions">
+                <form method="post" action="{{ url_for('review_promotion', request_id=req.id, action='approve') }}">
+                    <input name="teacher_comment" placeholder="Optional comment">
+                    <button type="submit">✓ Approve</button>
+                </form>
+                <form method="post" action="{{ url_for('review_promotion', request_id=req.id, action='reject') }}">
+                    <input name="teacher_comment" placeholder="Reason / next step">
+                    <button type="submit" class="danger-button">Reject</button>
+                </form>
+            </div>
+        </div>
+    {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if pending_teachers %}
+<section class="card teacher-approval-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">NEW TEACHER ACCOUNTS</p>
+            <h2>{{ pending_teachers|length }} waiting for approval</h2>
+        </div>
+    </div>
+    <div class="approval-list">
+    {% for teacher in pending_teachers %}
+        <div class="approval-item">
+            <div>
+                <strong>{{ teacher.name }}</strong>
+                <p>{{ teacher.email }}</p>
+            </div>
+            <div class="teacher-account-actions">
+                <form method="post" action="{{ url_for('review_teacher_account', user_id=teacher.id, action='approve') }}">
+                    <button type="submit">✓ Approve Teacher</button>
+                </form>
+                <form method="post" action="{{ url_for('review_teacher_account', user_id=teacher.id, action='reject') }}">
+                    <button type="submit" class="danger-button">Reject</button>
+                </form>
+            </div>
+        </div>
+    {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if attention %}
+<section class="card attention-card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">ATTENTION NEEDED</p>
+            <h2>{{ attention|length }} items to review</h2>
+        </div>
+    </div>
+    <div class="attention-list">
+    {% for item in attention[:8] %}
+        <a class="attention-item {{ item.severity }}" href="{{ url_for('teacher_student', student_id=item.student.id) }}">
+            <div>
+                <strong>{{ item.student.name }}</strong>
+                <span>Year {{ item.student.year_level }}</span>
+            </div>
+            <p>{{ item.message }}</p>
+            <span>Open →</span>
+        </a>
+    {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+
+<section class="card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">RECENT ACTIVITY</p>
+            <h2>Live Activity</h2>
+        </div>
+        <a class="button secondary small" href="{{ url_for('teacher_activity') }}">See all activity →</a>
+    </div>
+
+    <div class="updates-feed">
+    {% for item in recent_updates %}
+        <a class="update-item" href="{{ url_for('teacher_student', student_id=item.student.id) }}">
+            <div class="update-icon">{{ item.icon }}</div>
+            <div class="update-main">
+                <div class="update-topline">
+                    <strong>{{ item.student.name }}</strong>
+                    <span>{{ item.type }}</span>
+                </div>
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.detail }}</p>
+            </div>
+            <time>{{ item.time.strftime('%m/%d %H:%M') }}</time>
+        </a>
+    {% else %}
+        <p class="muted">No recent activity yet.</p>
+    {% endfor %}
+    </div>
+</section>
+
+<section class="card">
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Year / Stage</th>
+                <th>Essay</th>
+                <th>DET</th>
+                <th>Universities</th>
+                <th>Applications</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td>
+                    <strong>{{ row.student.name }}</strong>
+                    {% if row.flags %}<div class="warning-dot">Needs review</div>{% endif %}
+                </td>
+                <td>Year {{ row.student.year_level }}<br><small>{{ row.current_stage }}</small></td>
+                <td>
+                    {% if row.latest_essay %}
+                        <span class="essay-status {{ row.latest_essay.status|lower|replace(' ','-') }}">{{ row.latest_essay.stage }} • {{ row.latest_essay.status }}</span>
+                    {% else %}
+                        <span class="status-warn">Not started</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.official_det %}
+                        <strong>{{ row.official_det.score or 'Recorded' }}</strong><br><small>Official</small>
+                    {% elif row.latest_det %}
+                        <strong>{{ row.latest_det.score or '—' }}</strong><br><small>Practice</small>
+                    {% else %}
+                        <span class="status-warn">No record</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {{ row.researched_count }} researched<br>
+                    <small>{{ row.shortlisted_count }} shortlisted</small>
+                </td>
+                <td>
+                    {% if row.student.year_level == 3 %}
+                        {% if row.applied_count >= 1 %}
+                            <span class="status-good">✓ {{ row.applied_count }} submitted</span>
+                        {% else %}
+                            <span class="status-danger">0 submitted</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="muted">—</span>
+                    {% endif %}
+                </td>
+                <td><a class="button small" href="{{ url_for('teacher_student', student_id=row.student.id) }}">Open</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
+{% endblock %}
