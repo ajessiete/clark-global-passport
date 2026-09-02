@@ -680,7 +680,16 @@ th{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.
     .name-fields{grid-template-columns:1fr}
     .account-danger-zone{align-items:stretch;flex-direction:column}
 }
-/* Year pathway banner headline */
-.pathway-hero h1 {
-    color: #ffffff !important;
-}
+
+/* Year Progress v10.3 */
+.pathway-hero h1 { color:#fff !important; }
+.year-progress-card{margin-top:22px}
+.year-progress-heading{display:flex;justify-content:space-between;gap:24px}
+.progress-score{text-align:right}.progress-score strong{display:block;font-size:1.7rem}.progress-score span,.progress-percent{font-size:.85rem;opacity:.7}
+.passport-progress-track{height:12px;border-radius:999px;background:rgba(15,39,70,.10);overflow:hidden;margin-top:18px}
+.passport-progress-fill{height:100%;border-radius:inherit;background:currentColor}
+.milestone-list{display:grid;gap:9px}.milestone-row{display:grid;grid-template-columns:32px minmax(0,1fr) 145px;align-items:center;gap:10px;padding:12px 14px;border:1px solid rgba(15,39,70,.10);border-radius:14px;background:rgba(255,255,255,.55)}
+.milestone-row.is-complete .milestone-label{text-decoration:line-through;opacity:.65}.milestone-state{font-size:1.2rem;font-weight:800}
+.carryover-panel{padding:16px;border-radius:16px;background:rgba(230,171,54,.10);border:1px solid rgba(190,130,25,.20);margin:18px 0}.carryover-title strong,.carryover-title small{display:block}.carryover-title small{opacity:.7;margin-top:3px}
+.carried-row{grid-template-columns:72px minmax(0,1fr) 145px}.year-tag{display:inline-flex;justify-content:center;padding:5px 7px;border-radius:999px;font-size:.72rem;font-weight:800;background:rgba(15,39,70,.10)}
+@media(max-width:700px){.year-progress-heading{flex-direction:column}.progress-score{text-align:left}.milestone-row,.carried-row{grid-template-columns:72px minmax(0,1fr)}.milestone-row select,.carried-row select{grid-column:2}}

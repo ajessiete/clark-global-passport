@@ -185,6 +185,18 @@ class ActivityLog(db.Model):
     icon = db.Column(db.String(10), default="🔔")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class YearMilestone(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    year_level = db.Column(db.Integer, nullable=False)
+    milestone_key = db.Column(db.String(120), nullable=False)
+    status = db.Column(db.String(30), nullable=False, default="not_started")
+    completed_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint("student_id", "year_level", "milestone_key",
+                                          name="uq_year_milestone_student_year_key"),)
+
+
 class SystemMigration(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(120), unique=True, nullable=False)
@@ -542,9 +554,13 @@ def student_dashboard():
     projects = Project.query.filter_by(student_id=user.id).order_by(Project.updated_at.desc()).all()
     portfolio_count = PortfolioItem.query.filter_by(student_id=user.id).count()
     pathway = get_year_pathway(user.year_level or 1)
+    year_progress, carried_over_milestones, all_year_progress = build_year_progress(user)
     return render_template(
         "student_dashboard.html",
         student=user,
+        year_progress=year_progress,
+        carried_over_milestones=carried_over_milestones,
+        all_year_progress=all_year_progress,
         scores=scores,
         reflections=reflections,
         projects=projects,
@@ -556,6 +572,27 @@ def student_dashboard():
         consultations=ConsultationEntry.query.filter_by(student_id=user.id).order_by(ConsultationEntry.created_at.desc()).limit(3).all() if user.year_level == 3 else [],
         milestones=ensure_year3_milestones(user.id) if user.year_level == 3 else [],
     )
+
+@app.route("/student/year-progress/<int:year>/<milestone_key>", methods=["POST"])
+def update_year_milestone(year, milestone_key):
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+    current_year = max(1, min(int(user.year_level or 1), 3))
+    valid = YEAR_MILESTONE_DEFINITIONS.get(year)
+    if not valid or year > current_year or milestone_key not in {k for k, _ in valid["milestones"]}:
+        flash("That milestone is not available.", "error")
+        return redirect(url_for("student_dashboard"))
+    ensure_year_milestones(user)
+    milestone = YearMilestone.query.filter_by(student_id=user.id, year_level=year,
+                                              milestone_key=milestone_key).first_or_404()
+    status = request.form.get("status", "not_started")
+    if status not in {"not_started", "in_progress", "complete"}:
+        status = "not_started"
+    milestone.status = status
+    milestone.completed_at = datetime.utcnow() if status == "complete" else None
+    db.session.commit()
+    return redirect(url_for("student_dashboard"))
 
 @app.route("/reflections", methods=["GET", "POST"])
 def reflections():
@@ -1276,6 +1313,7 @@ def delete_user_account_records(target_user):
 
         for model in [
             StudentAcademicProfile,
+            YearMilestone,
             CompetencyScore,
             Reflection,
             Project,
@@ -1811,6 +1849,81 @@ def teacher_update_competency(student_id):
     return redirect(url_for("teacher_student", student_id=student.id))
 
 
+YEAR_MILESTONE_DEFINITIONS = {
+    1: {"title": "Foundation", "goal": "Build your story and English foundation.", "milestones": [
+        ("first_reflection", "Complete your first reflection"),
+        ("story_bank", "Create your Story Bank"),
+        ("first_essay_draft", "Finish your first personal essay draft"),
+        ("det_routine", "Build a DET study routine"),
+        ("global_activity", "Join at least one school or global activity"),
+        ("first_portfolio", "Add your first portfolio item"),
+        ("inquiry_project", "Complete an inquiry or PBL project"),
+        ("year_reflection", "Complete your end-of-year reflection"),
+    ]},
+    2: {"title": "Exploration", "goal": "Explore your interests and build meaningful experiences.", "milestones": [
+        ("inquiry_project", "Complete an inquiry or PBL project"),
+        ("active_role", "Take an active or leadership role in an activity"),
+        ("portfolio_update", "Update your portfolio with Year 2 evidence"),
+        ("major_career_research", "Research possible majors or career paths"),
+        ("university_shortlist", "Build an initial university shortlist"),
+        ("essay_development", "Develop your personal essay further"),
+        ("det_progress", "Record and reflect on your DET progress"),
+        ("year_reflection", "Complete your end-of-year reflection"),
+    ]},
+    3: {"title": "Launch", "goal": "Prepare, complete, and submit your overseas university applications.", "milestones": [
+        ("university_list", "Confirm your final university list"),
+        ("official_det", "Record your official DET score"),
+        ("final_essay", "Get your final personal essay approved"),
+        ("school_documents", "Prepare transcripts and school documents"),
+        ("recommendations", "Request recommendation letters"),
+        ("applications_progress", "Complete application forms"),
+        ("application_submitted", "Submit at least one overseas application"),
+        ("next_steps", "Prepare for interviews, scholarships, or visa steps"),
+    ]},
+}
+
+def ensure_year_milestones(student):
+    if not student or student.role != "student":
+        return
+    current_year = max(1, min(int(student.year_level or 1), 3))
+    existing = {(r.year_level, r.milestone_key) for r in
+                YearMilestone.query.filter_by(student_id=student.id).all()}
+    changed = False
+    for year in range(1, current_year + 1):
+        for key, _ in YEAR_MILESTONE_DEFINITIONS[year]["milestones"]:
+            if (year, key) not in existing:
+                db.session.add(YearMilestone(student_id=student.id, year_level=year,
+                                             milestone_key=key, status="not_started"))
+                changed = True
+    if changed:
+        db.session.commit()
+
+def build_year_progress(student):
+    ensure_year_milestones(student)
+    current_year = max(1, min(int(student.year_level or 1), 3))
+    rows = YearMilestone.query.filter_by(student_id=student.id).all()
+    row_map = {(r.year_level, r.milestone_key): r for r in rows}
+    years = []
+    for year in range(1, current_year + 1):
+        definition = YEAR_MILESTONE_DEFINITIONS[year]
+        items = []
+        for key, label in definition["milestones"]:
+            row = row_map.get((year, key))
+            items.append({"key": key, "label": label,
+                          "status": row.status if row else "not_started"})
+        complete = sum(i["status"] == "complete" for i in items)
+        years.append({"year": year, "title": definition["title"], "goal": definition["goal"],
+                      "items": items, "complete": complete, "total": len(items),
+                      "percent": round(complete / len(items) * 100) if items else 0})
+    current = years[-1]
+    carried = []
+    for yd in years[:-1]:
+        for item in yd["items"]:
+            if item["status"] != "complete":
+                carried.append({**item, "from_year": yd["year"], "from_title": yd["title"]})
+    return current, carried, years
+
+
 def ensure_user_name_columns():
     """Add first_name and last_name to existing databases without requiring Alembic."""
     inspector = inspect(db.engine)
@@ -1863,6 +1976,7 @@ def reset_all_students_once():
 
         for model in [
             StudentAcademicProfile,
+            YearMilestone,
             CompetencyScore,
             Reflection,
             Project,

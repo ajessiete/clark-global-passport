@@ -101,7 +101,7 @@
 </section>
 
 <section class="card">
-    <p class="eyebrow">GLOBAL COMPETENCIES</p>
+    <p class="eyebrow">YEAR PROGRESS</p>
     <h2>Competency Profile</h2>
     {% for competency, score in scores.items() %}
     <form method="post" action="{{ url_for('teacher_update_competency', student_id=student.id) }}" class="teacher-skill">

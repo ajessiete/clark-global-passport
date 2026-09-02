@@ -9,7 +9,7 @@
     <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
     <title>{% block title %}Clark Global Passport{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=10.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=10.3">
 </head>
 <body>
 <div class="pwa-utility">
@@ -50,8 +50,8 @@
     {% endwith %}
     {% block content %}{% endblock %}
 </main>
-<script src="{{ url_for('static', filename='js/pwa.js') }}?v=10.2"></script>
+<script src="{{ url_for('static', filename='js/pwa.js') }}?v=10.3"></script>
 <script src="{{ url_for('static', filename='js/drafts.js') }}"></script>
-<script src="{{ url_for('static', filename='js/account_delete.js') }}?v=10.2"></script>
+<script src="{{ url_for('static', filename='js/account_delete.js') }}?v=10.3"></script>
 </body>
 </html>

@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js?v=10.2").catch(err => {
+    navigator.serviceWorker.register("/sw.js?v=10.3").catch(err => {
       console.warn("Service worker registration failed:", err);
     });
   }

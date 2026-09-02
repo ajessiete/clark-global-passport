@@ -299,3 +299,7 @@ Account settings:
 - If the last active teacher deletes their account and a pending teacher exists, the earliest pending teacher is activated.
 
 Prototype note: formal CSRF protection should still be added before production use with real student data.
+
+
+## v10.3 — Three-Year Global Passport Progress
+Replaces student-facing Global Competencies with concrete Year 1–3 milestone tracking. Unfinished previous-year milestones automatically carry forward after promotion. Milestones remain Not Started, In Progress, or Complete; promotion does not auto-complete them.
