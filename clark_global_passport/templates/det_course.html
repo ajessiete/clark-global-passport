@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('det_prep') }}">← DET Mission</a>
+<div class="page-title">
+    <p class="eyebrow">DET LEARNING PATH</p>
+    <h1>Build English one level at a time.</h1>
+    <p>Each level has 100 practice items across 10 themes. Reach 80/100 to unlock the next level.</p>
+</div>
+
+<section class="card vocab-banner">
+    <div>
+        <p class="eyebrow">SPACED REPETITION</p>
+        <h2>100-Word Vocabulary Deck</h2>
+        <p>{{ due_vocab }} cards are ready for review.</p>
+    </div>
+    <a class="button" href="{{ url_for('det_vocabulary') }}">Review Vocabulary →</a>
+</section>
+
+<div class="det-level-path">
+{% for row in levels %}
+    <div class="det-level-card {% if not row.unlocked %}locked{% endif %}">
+        <div class="det-level-number">{{ row.level }}</div>
+        <div class="det-level-main">
+            <p class="eyebrow">LEVEL {{ row.level }} • {{ row.meta.band }}</p>
+            <h2>{{ row.meta.name }}</h2>
+            <p>{{ row.meta.description }}</p>
+            <div class="passport-progress-track">
+                <div class="passport-progress-fill" style="width:{{ row.progress.percent }}%"></div>
+            </div>
+            <small>{{ row.progress.correct }}/100 correct</small>
+        </div>
+        <div>
+            {% if row.unlocked %}
+            <a class="button" href="{{ url_for('det_level', level=row.level) }}">{% if row.progress.correct %}Continue{% else %}Start{% endif %} →</a>
+            {% else %}
+            <span class="det-lock">🔒 Complete 80 items in Level {{ row.level - 1 }}</span>
+            {% endif %}
+        </div>
+    </div>
+{% endfor %}
+</div>
+<p class="muted det-band-note">IELTS ranges here are the course-level labels selected for this Clark practice pathway; they are not an official DET↔IELTS score conversion.</p>
+{% endblock %}

@@ -361,3 +361,28 @@ Completing all eight writeshops automatically completes the Year 1 "Complete the
 The Personal Essay Lab now uses the same Word-style editor. Actual Personal Essay stages remain teacher-gated and keep the existing approval/resubmission workflow.
 
 Rich-text HTML is sanitized server-side before storage/display.
+
+
+## v10.7 — Teacher-Reviewed Writeshops + DET Learning Path
+
+Essay Writeshops:
+- Student writeshops are submitted for teacher review.
+- Teachers can Comment, Approve, or Ask for Resubmission.
+- Revision requests require feedback.
+- Only teacher-approved writeshops count toward completing the Year 1 Essay Training milestone.
+
+DET Learning:
+- Six course levels using the requested IELTS-range labels.
+- 100 deterministic practice items per level (600 total).
+- Each level is divided into 10 themed units of 10 questions.
+- Students need 80/100 mastered items to unlock the next level.
+- Progress is stored per student and per practice item.
+- Existing DET score recording remains available.
+
+Vocabulary:
+- 100-word spaced-repetition deck.
+- Again / Hard / Good / Easy review controls.
+- Review intervals expand as a word becomes more familiar.
+- Vocabulary review progress is stored separately for each student.
+
+The IELTS ranges are internal course labels and are not presented as an official DET-to-IELTS score conversion.

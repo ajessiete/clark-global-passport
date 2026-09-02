@@ -8,6 +8,31 @@
     <p>Small progress is visible progress. Record practice and official results here.</p>
 </div>
 
+
+<section class="card det-learning-launch">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">DET LEARNING PATH</p>
+            <h2>6 Levels • 600 Practice Items</h2>
+            <p class="muted">Work through themed lessons at your level. Complete 80/100 to unlock the next level.</p>
+        </div>
+        <a class="button" href="{{ url_for('det_course') }}">Start Learning →</a>
+    </div>
+    <div class="det-level-mini-grid">
+    {% for row in level_summaries %}
+        <div class="det-level-mini {% if not row.unlocked %}locked{% endif %}">
+            <strong>Level {{ row.level }}</strong>
+            <span>{{ row.meta.band }}</span>
+            <small>{{ row.progress.correct }}/100</small>
+        </div>
+    {% endfor %}
+    </div>
+    <div class="vocab-launch">
+        <div><strong>100-Word Vocabulary Review</strong><span>{{ due_vocab }} cards due now</span></div>
+        <a class="button secondary small" href="{{ url_for('det_vocabulary') }}">Review Vocabulary →</a>
+    </div>
+</section>
+
 <div class="det-quest">
     <div><span>01</span><strong>Know the Test</strong><small>Understand question types</small></div>
     <div><span>02</span><strong>Find Your Baseline</strong><small>Take a practice test</small></div>

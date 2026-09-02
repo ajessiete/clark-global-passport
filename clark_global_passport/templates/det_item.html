@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('det_theme', level=level, theme_key=item.theme_key) }}">← {{ item.theme }}</a>
+<div class="det-question-shell">
+    <div class="det-question-top">
+        <span>Level {{ level }}</span><span>{{ item.theme }}</span><span>{{ item.type }}</span>
+    </div>
+    <section class="card det-question-card">
+        <p class="eyebrow">PRACTICE ITEM {{ item.number }}/10</p>
+        <h1>{{ item.prompt }}</h1>
+
+        {% if result %}
+            <div class="{% if result.correct %}det-result-correct{% else %}det-result-wrong{% endif %}">
+                <strong>{% if result.correct %}✓ Correct!{% else %}Not quite yet.{% endif %}</strong>
+                <p>{{ result.explanation }}</p>
+            </div>
+            <a class="button" href="{{ url_for('det_theme', level=level, theme_key=item.theme_key) }}">Continue →</a>
+        {% else %}
+        <form method="post" class="det-choice-form">
+            {% for choice in item.choices %}
+            <label class="det-choice">
+                <input type="radio" name="answer" value="{{ choice }}" required>
+                <span>{{ choice }}</span>
+            </label>
+            {% endfor %}
+            <button type="submit">Check Answer</button>
+        </form>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

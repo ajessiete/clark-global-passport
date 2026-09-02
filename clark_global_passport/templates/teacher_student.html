@@ -112,6 +112,51 @@
     </div>
 </section>
 
+<section class="card">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">ESSAY WRITESHOPS</p>
+            <h2>Training Review</h2>
+            <p class="muted">Approve practice that meets the goal, or ask the student to revise and resubmit.</p>
+        </div>
+        {% set pending_workshops = workshop_progress|selectattr('state','equalto','Pending Review')|list %}
+        {% if pending_workshops %}<span class="status-warn">{{ pending_workshops|length }} waiting</span>{% endif %}
+    </div>
+
+    <div class="teacher-workshop-list">
+    {% for row in workshop_progress %}
+        <div class="teacher-workshop-review">
+            <div class="teacher-workshop-title">
+                <span class="writeshop-number small-number">{{ "%02d"|format(row.workshop.number) }}</span>
+                <div>
+                    <strong>{{ row.workshop.title }}</strong>
+                    <span class="essay-status {{ row.state|lower|replace(' ','-') }}">{{ row.state }}</span>
+                </div>
+            </div>
+
+            {% if row.progress and row.progress.content %}
+            <details>
+                <summary>Open student practice</summary>
+                <div class="rich-output workshop-preview">{{ row.progress.content|safe }}</div>
+            </details>
+
+            <form method="post" action="{{ url_for('teacher_review_writeshop', progress_id=row.progress.id) }}" class="form-stack compact-review">
+                <textarea name="comment" placeholder="Feedback or revision instructions"></textarea>
+                <div class="review-buttons">
+                    <button name="decision" value="Comment" class="secondary">Comment</button>
+                    <button name="decision" value="Request Resubmission" class="resubmit-button">↻ Ask for Resubmission</button>
+                    <button name="decision" value="Approve">✓ Approve</button>
+                </div>
+            </form>
+            {% else %}
+            <p class="muted">No practice submitted yet.</p>
+            {% endif %}
+        </div>
+    {% endfor %}
+    </div>
+</section>
+
+
 <div class="grid two">
 <section class="card">
     <p class="eyebrow">DUOLINGO ENGLISH TEST</p>

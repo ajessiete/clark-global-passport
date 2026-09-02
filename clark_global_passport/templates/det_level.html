@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('det_course') }}">← All Levels</a>
+<div class="page-title">
+    <p class="eyebrow">LEVEL {{ level }} • {{ level_meta.band }}</p>
+    <h1>{{ level_meta.name }}</h1>
+    <p>{{ level_meta.description }}</p>
+</div>
+
+<section class="card">
+    <div class="section-heading">
+        <h2>{{ overall.correct }}/100 correct</h2><strong>{{ overall.percent }}%</strong>
+    </div>
+    <div class="passport-progress-track"><div class="passport-progress-fill" style="width:{{ overall.percent }}%"></div></div>
+    {% if overall.correct >= 80 %}<div class="year-complete-message">✓ Next level unlocked.</div>{% endif %}
+</section>
+
+<div class="det-theme-grid">
+{% for theme in themes %}
+    <a class="det-theme-card" href="{{ url_for('det_theme', level=level, theme_key=theme.key) }}">
+        <div class="det-theme-icon">{{ "%02d"|format(loop.index) }}</div>
+        <div>
+            <h3>{{ theme.title }}</h3>
+            <div class="passport-progress-track"><div class="passport-progress-fill" style="width:{{ theme.progress.percent }}%"></div></div>
+            <small>{{ theme.progress.correct }}/10 correct</small>
+        </div>
+        <span>→</span>
+    </a>
+{% endfor %}
+</div>
+{% endblock %}

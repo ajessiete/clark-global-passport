@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('det_level', level=level) }}">← Level {{ level }}</a>
+<div class="page-title">
+    <p class="eyebrow">LEVEL {{ level }} • THEMED UNIT</p>
+    <h1>{{ theme_title }}</h1>
+    <p>{{ progress.correct }}/10 items mastered.</p>
+</div>
+
+<section class="card">
+    <div class="passport-progress-track"><div class="passport-progress-fill" style="width:{{ progress.percent }}%"></div></div>
+</section>
+
+<div class="det-item-map">
+{% for item in items %}
+    {% set row = progress_map.get(item.key) %}
+    <a href="{{ url_for('det_item', level=level, item_key=item.key) }}"
+       class="det-map-node {% if row and row.correct %}done{% elif item.key == next_item.key %}current{% endif %}">
+        <span>{{ loop.index }}</span>
+        <small>{{ item.type }}</small>
+        {% if row and row.correct %}<b>✓</b>{% endif %}
+    </a>
+{% endfor %}
+</div>
+
+<a class="button det-continue-button" href="{{ url_for('det_item', level=level, item_key=next_item.key) }}">Continue Practice →</a>
+{% endblock %}

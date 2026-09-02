@@ -20,21 +20,26 @@
         <div class="passport-progress-fill" style="width:{{ percent }}%"></div>
     </div>
     {% if completed_count == total %}
-    <div class="year-complete-message">✓ Essay Training complete — your Year 1 progress has updated automatically.</div>
+    <div class="year-complete-message">✓ Essay Training approved — all eight writeshops have been approved by a teacher.</div>
     {% endif %}
 </section>
 
 <div class="writeshop-grid">
 {% for workshop in workshops %}
     {% set p = progress_map.get(workshop.key) %}
-    <a class="writeshop-card {% if p and p.completed %}completed{% endif %}" href="{{ url_for('essay_writeshop', workshop_key=workshop.key) }}">
+    <a class="writeshop-card {% if review_states.get(workshop.key) == "Approved" %}completed{% endif %}" href="{{ url_for('essay_writeshop', workshop_key=workshop.key) }}">
         <span class="writeshop-number">{{ "%02d"|format(workshop.number) }}</span>
         <div>
             <p class="mini-label">WRITESHOP {{ workshop.number }}</p>
             <h2>{{ workshop.title }}</h2>
             <p>{{ workshop.subtitle }}</p>
         </div>
-        <span class="writeshop-status">{% if p and p.completed %}✓ Complete{% elif p and p.content %}Continue →{% else %}Start →{% endif %}</span>
+        <span class="writeshop-status">{% set state = review_states.get(workshop.key, "Not Started") %}
+        {% if state == "Approved" %}✓ Approved
+        {% elif state == "Pending Review" %}Waiting for Teacher
+        {% elif state == "Resubmission Requested" %}Revision Requested →
+        {% elif p and p.content %}Continue →
+        {% else %}Start →{% endif %}</span>
     </a>
 {% endfor %}
 </div>

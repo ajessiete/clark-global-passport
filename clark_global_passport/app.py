@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text as sql_text
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 from html.parser import HTMLParser
 import csv
 import io
@@ -106,6 +106,43 @@ class EssayWorkshopProgress(db.Model):
     __table_args__ = (
         db.UniqueConstraint("student_id", "workshop_key",
                             name="uq_essay_workshop_student_key"),
+    )
+
+
+class EssayWorkshopReview(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    progress_id = db.Column(db.Integer, db.ForeignKey("essay_workshop_progress.id"), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    decision = db.Column(db.String(40), nullable=False)
+    comment = db.Column(db.Text, default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class DETPracticeProgress(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    level = db.Column(db.Integer, nullable=False)
+    item_key = db.Column(db.String(120), nullable=False)
+    correct = db.Column(db.Boolean, default=False)
+    attempts = db.Column(db.Integer, default=0)
+    last_answer = db.Column(db.String(255), default="")
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    __table_args__ = (
+        db.UniqueConstraint("student_id", "item_key", name="uq_det_practice_student_item"),
+    )
+
+
+class DETVocabularyProgress(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    vocab_key = db.Column(db.String(120), nullable=False)
+    box = db.Column(db.Integer, default=0)
+    reviews = db.Column(db.Integer, default=0)
+    correct_reviews = db.Column(db.Integer, default=0)
+    next_review_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_reviewed_at = db.Column(db.DateTime, nullable=True)
+    __table_args__ = (
+        db.UniqueConstraint("student_id", "vocab_key", name="uq_det_vocab_student_key"),
     )
 
 
@@ -356,6 +393,287 @@ def sanitize_rich_text(value):
     sanitizer.feed(value or "")
     return sanitizer.get_html().strip()
 
+DET_LEVELS = {
+    1: {"band": "IELTS 0.0–2.5", "name": "Starter", "description": "Everyday words, short sentences, basic meaning."},
+    2: {"band": "IELTS 2.6–3.5", "name": "Elementary", "description": "Common situations, sentence patterns, simple descriptions."},
+    3: {"band": "IELTS 3.5–5.0", "name": "Developing", "description": "Connected ideas, everyday academic language, clearer detail."},
+    4: {"band": "IELTS 5.0–6.5", "name": "Independent", "description": "Academic vocabulary, inference, paraphrase, organized responses."},
+    5: {"band": "IELTS 6.5–7.5", "name": "Advanced", "description": "Nuance, argument, precision, complex academic language."},
+    6: {"band": "IELTS 7.5–9.0", "name": "Expert", "description": "Subtle meaning, sophisticated vocabulary, synthesis, precise expression."},
+}
+
+DET_THEMES = [
+    ("daily_life", "Daily Life"),
+    ("school", "School & Study"),
+    ("people", "People & Relationships"),
+    ("travel", "Travel & Places"),
+    ("health", "Health & Lifestyle"),
+    ("technology", "Technology"),
+    ("environment", "Environment"),
+    ("society", "Society & Culture"),
+    ("academic", "Academic English"),
+    ("communication", "Communication & Ideas"),
+]
+
+DET_WORD_BANKS = {
+    1: [
+        ("arrive", "to reach a place", "We arrive at school before nine."),
+        ("borrow", "to take and use something that belongs to someone else", "Can I borrow your pencil?"),
+        ("choose", "to decide which thing you want", "Choose one answer."),
+        ("different", "not the same", "The two pictures are different."),
+        ("enough", "as much as needed", "We have enough time."),
+        ("friendly", "kind and pleasant", "Our new classmate is friendly."),
+        ("happen", "to take place", "What happened yesterday?"),
+        ("important", "having great value or meaning", "Sleep is important for health."),
+        ("practice", "to do something repeatedly to improve", "I practice English every day."),
+        ("quiet", "making little or no noise", "The library is quiet."),
+        ("remember", "to keep something in your mind", "Remember to bring your notebook."),
+        ("simple", "easy to understand or do", "The instructions are simple."),
+        ("together", "with another person or group", "We studied together."),
+        ("usually", "most of the time", "I usually walk to school."),
+        ("weather", "the condition of the air outside", "The weather is sunny today."),
+        ("answer", "a response to a question", "Write your answer here."),
+        ("busy", "having many things to do", "My mother is busy today."),
+        ("carry", "to hold and move something", "I carry my bag to school."),
+        ("decide", "to make a choice", "We decided to eat outside."),
+        ("early", "before the expected time", "I woke up early."),
+    ],
+    2: [
+        ("advice", "an opinion about what someone should do", "My teacher gave me useful advice."),
+        ("comfortable", "feeling relaxed and at ease", "This chair is comfortable."),
+        ("describe", "to say what something is like", "Describe your hometown."),
+        ("experience", "something that happens to you", "The trip was a new experience."),
+        ("improve", "to become or make something better", "Reading can improve your vocabulary."),
+        ("invite", "to ask someone to come to an event", "I invited my friend to the festival."),
+        ("local", "connected with a particular area", "We visited a local market."),
+        ("opinion", "what someone thinks or believes", "What is your opinion?"),
+        ("prepare", "to get ready", "I prepared for the test."),
+        ("probably", "likely to happen", "It will probably rain."),
+        ("reason", "a cause or explanation", "Give one reason for your answer."),
+        ("recommend", "to suggest something as good", "I recommend this book."),
+        ("schedule", "a plan of times and activities", "My schedule is full today."),
+        ("similar", "almost the same", "The two ideas are similar."),
+        ("solve", "to find an answer to a problem", "We solved the problem together."),
+        ("support", "to help someone or something", "My family supports my goals."),
+        ("traditional", "connected with customs from the past", "We ate traditional food."),
+        ("useful", "helpful for a purpose", "This website is useful."),
+        ("visitor", "a person who comes to a place", "The museum has many visitors."),
+        ("worry", "to feel nervous about a problem", "Do not worry about small mistakes."),
+    ],
+    3: [
+        ("achieve", "to successfully reach a goal", "She achieved her goal after months of practice."),
+        ("advantage", "something that makes a situation better", "One advantage is lower cost."),
+        ("challenge", "a difficult task or situation", "Learning abroad can be a challenge."),
+        ("compare", "to examine similarities and differences", "Compare the two options."),
+        ("concentrate", "to give full attention", "I concentrate better in a quiet room."),
+        ("consider", "to think carefully about something", "Consider both sides of the issue."),
+        ("develop", "to grow or become more advanced", "The project helped me develop confidence."),
+        ("effect", "a result or change caused by something", "Exercise has a positive effect on mood."),
+        ("environment", "the natural world or surrounding conditions", "We should protect the environment."),
+        ("increase", "to become or make greater", "Prices increased last year."),
+        ("influence", "to affect how someone thinks or acts", "Friends can influence our choices."),
+        ("opportunity", "a chance to do something", "The program gave me an opportunity to travel."),
+        ("participate", "to take part in an activity", "Many students participated in the event."),
+        ("reduce", "to make something smaller or less", "We should reduce plastic waste."),
+        ("research", "careful study to discover information", "I did research before choosing a university."),
+        ("responsibility", "a duty you are expected to handle", "Students have responsibility for their work."),
+        ("result", "what happens because of an action", "The result surprised us."),
+        ("solution", "a way to solve a problem", "We discussed possible solutions."),
+        ("specific", "clear and exact", "Give a specific example."),
+        ("variety", "a number of different types", "The city offers a variety of activities."),
+    ],
+    4: [
+        ("accurate", "correct and free from errors", "Academic writing should use accurate information."),
+        ("approach", "a way of dealing with a problem", "The team tried a different approach."),
+        ("assume", "to accept something as true without proof", "Do not assume that every source is reliable."),
+        ("benefit", "a helpful or positive effect", "The program provides several benefits."),
+        ("consequence", "a result of an action, often important", "Every decision can have consequences."),
+        ("contrast", "a clear difference between things", "The essay contrasts urban and rural life."),
+        ("evidence", "facts or information that support an idea", "Use evidence to support your claim."),
+        ("factor", "something that influences a result", "Cost is an important factor."),
+        ("indicate", "to show or suggest something", "The data indicates a gradual increase."),
+        ("interpret", "to explain the meaning of something", "Students interpreted the graph differently."),
+        ("maintain", "to keep something at the same level or condition", "It is difficult to maintain motivation."),
+        ("perspective", "a particular way of viewing something", "Travel changed my perspective."),
+        ("relevant", "closely connected to the topic", "Include only relevant details."),
+        ("require", "to need something as necessary", "The course requires weekly assignments."),
+        ("significant", "important or large enough to be noticed", "There was a significant difference."),
+        ("strategy", "a plan designed to achieve a goal", "She developed a study strategy."),
+        ("tendency", "a general direction or pattern", "There is a tendency to study online."),
+        ("valid", "reasonable or well supported", "Both arguments raise valid concerns."),
+        ("vary", "to change or differ", "Requirements vary by university."),
+        ("whereas", "used to contrast two facts", "City life is fast, whereas rural life is quieter."),
+    ],
+    5: [
+        ("ambiguous", "having more than one possible meaning", "The question is deliberately ambiguous."),
+        ("coherent", "logical and well organized", "Her argument was clear and coherent."),
+        ("compelling", "very convincing or interesting", "The essay gives a compelling example."),
+        ("controversial", "causing strong disagreement", "The policy remains controversial."),
+        ("diminish", "to become or make smaller or less important", "Interest may diminish over time."),
+        ("emphasize", "to give special importance to something", "The author emphasizes personal responsibility."),
+        ("feasible", "possible and practical to do", "The proposal is financially feasible."),
+        ("inevitable", "certain to happen", "Some degree of change is inevitable."),
+        ("justify", "to give good reasons for something", "You must justify your conclusion."),
+        ("notion", "an idea or belief", "The study challenges the notion that talent is fixed."),
+        ("offset", "to balance the effect of something", "Lower costs may offset the inconvenience."),
+        ("plausible", "seeming reasonable or likely", "That is a plausible explanation."),
+        ("predominantly", "mainly or mostly", "The area is predominantly residential."),
+        ("reinforce", "to make an idea or effect stronger", "The example reinforces the main argument."),
+        ("reluctant", "unwilling or hesitant", "Some students are reluctant to speak at first."),
+        ("substantial", "large or important", "The project required substantial preparation."),
+        ("underlying", "basic but not immediately obvious", "We examined the underlying cause."),
+        ("undermine", "to make something weaker", "Poor evidence can undermine an argument."),
+        ("viable", "capable of working successfully", "They searched for a viable alternative."),
+        ("widespread", "existing or happening in many places", "Smartphone use is widespread."),
+    ],
+    6: [
+        ("arbitrary", "based on chance or personal choice rather than reason", "The distinction may appear arbitrary."),
+        ("concede", "to admit that something is true", "The author concedes that the policy has limitations."),
+        ("constrain", "to limit what can be done", "Limited funding can constrain innovation."),
+        ("corroborate", "to provide evidence that supports a statement", "The second study corroborates the original findings."),
+        ("discrepancy", "a difference that suggests something is wrong", "Researchers noted a discrepancy in the figures."),
+        ("empirical", "based on observation or experiment", "The claim lacks empirical support."),
+        ("exacerbate", "to make a problem worse", "High costs may exacerbate inequality."),
+        ("infer", "to reach a conclusion from evidence", "We can infer the author's attitude from the final paragraph."),
+        ("intrinsic", "belonging naturally to something", "Curiosity can be an intrinsic motivation."),
+        ("mitigate", "to make something less harmful or serious", "The policy aims to mitigate environmental damage."),
+        ("nuanced", "showing subtle distinctions", "Her response offers a nuanced interpretation."),
+        ("paradox", "a situation that seems contradictory but may be true", "The result creates an interesting paradox."),
+        ("pervasive", "spreading widely throughout something", "Digital technology has a pervasive influence."),
+        ("premise", "an idea on which an argument is based", "The conclusion depends on a questionable premise."),
+        ("reconcile", "to make different ideas compatible", "The essay tries to reconcile freedom and responsibility."),
+        ("scrutinize", "to examine very carefully", "Researchers scrutinized the data."),
+        ("substantiate", "to support a claim with evidence", "The writer fails to substantiate the accusation."),
+        ("tentative", "not certain or fixed", "The researchers reached a tentative conclusion."),
+        ("trajectory", "the path or direction of development", "The graph shows the economy's long-term trajectory."),
+        ("ubiquitous", "present or found everywhere", "Mobile devices have become ubiquitous."),
+    ],
+}
+
+DET_THEME_CONTEXTS = {
+    "daily_life": ["morning routines", "shopping", "free time", "food choices"],
+    "school": ["class projects", "homework", "study habits", "school events"],
+    "people": ["friendship", "family", "teamwork", "community"],
+    "travel": ["transportation", "tourism", "cities", "cultural experiences"],
+    "health": ["sleep", "exercise", "stress", "healthy habits"],
+    "technology": ["smartphones", "social media", "online learning", "AI tools"],
+    "environment": ["recycling", "climate", "energy", "local nature"],
+    "society": ["traditions", "work", "education", "public spaces"],
+    "academic": ["research", "graphs", "arguments", "sources"],
+    "communication": ["presentations", "discussion", "writing", "interviews"],
+}
+
+def build_det_items(level):
+    """Return exactly 100 deterministic practice items: 10 themes x 10."""
+    words = DET_WORD_BANKS[level]
+    items = []
+    for theme_index, (theme_key, theme_title) in enumerate(DET_THEMES):
+        contexts = DET_THEME_CONTEXTS[theme_key]
+        for n in range(10):
+            word, meaning, example = words[(theme_index * 3 + n) % len(words)]
+            distractors = [
+                words[(theme_index * 3 + n + 5) % len(words)][0],
+                words[(theme_index * 3 + n + 9) % len(words)][0],
+                words[(theme_index * 3 + n + 13) % len(words)][0],
+            ]
+            if n % 4 == 0:
+                prompt = f"Choose the word that best matches this meaning: “{meaning}”"
+                answer = word
+                choices = [word] + distractors
+                qtype = "Meaning"
+            elif n % 4 == 1:
+                prompt = f"Complete the sentence with the best word: {example.replace(word, '_____').replace(word.capitalize(), '_____')}"
+                answer = word
+                choices = [word] + distractors
+                qtype = "Sentence"
+            elif n % 4 == 2:
+                context = contexts[n % len(contexts)]
+                prompt = f"Which word would be most useful when discussing {context} in this sentence? “The writer should give a more _____ explanation.”"
+                answer = word
+                choices = [word] + distractors
+                qtype = "Context"
+            else:
+                prompt = f"Which definition best matches “{word}”?"
+                answer = meaning
+                other_defs = [
+                    words[(theme_index * 3 + n + 4) % len(words)][1],
+                    words[(theme_index * 3 + n + 8) % len(words)][1],
+                    words[(theme_index * 3 + n + 12) % len(words)][1],
+                ]
+                choices = [meaning] + other_defs
+                qtype = "Definition"
+
+            # deterministic rotation so correct answer is not always first
+            rotate = (level + theme_index + n) % 4
+            choices = choices[rotate:] + choices[:rotate]
+            items.append({
+                "key": f"L{level}-{theme_key}-{n+1:02d}",
+                "level": level,
+                "theme_key": theme_key,
+                "theme": theme_title,
+                "number": n + 1,
+                "type": qtype,
+                "prompt": prompt,
+                "choices": choices,
+                "answer": answer,
+                "explanation": f"“{word}” means {meaning}. Example: {example}",
+            })
+    return items
+
+DET_ITEMS = {level: build_det_items(level) for level in DET_LEVELS}
+
+# 100-word SRS vocabulary deck: Levels 2–6 banks (20 each).
+DET_VOCABULARY = []
+for vocab_level in range(2, 7):
+    for index, (word, meaning, example) in enumerate(DET_WORD_BANKS[vocab_level], start=1):
+        DET_VOCABULARY.append({
+            "key": f"V{vocab_level}-{index:02d}",
+            "level": vocab_level,
+            "word": word,
+            "meaning": meaning,
+            "example": example,
+        })
+
+def det_level_progress(student_id, level):
+    rows = DETPracticeProgress.query.filter_by(student_id=student_id, level=level).all()
+    correct_keys = {row.item_key for row in rows if row.correct}
+    return {
+        "correct": len(correct_keys),
+        "total": 100,
+        "percent": len(correct_keys),
+    }
+
+def det_level_unlocked(student_id, level):
+    if level == 1:
+        return True
+    previous = det_level_progress(student_id, level - 1)
+    return previous["correct"] >= 80
+
+def det_theme_progress(student_id, level, theme_key):
+    keys = {item["key"] for item in DET_ITEMS[level] if item["theme_key"] == theme_key}
+    rows = DETPracticeProgress.query.filter(
+        DETPracticeProgress.student_id == student_id,
+        DETPracticeProgress.item_key.in_(keys)
+    ).all()
+    correct = sum(1 for row in rows if row.correct)
+    return {"correct": correct, "total": 10, "percent": correct * 10}
+
+def get_det_item(level, item_key):
+    return next((item for item in DET_ITEMS.get(level, []) if item["key"] == item_key), None)
+
+def get_vocab_item(vocab_key):
+    return next((item for item in DET_VOCABULARY if item["key"] == vocab_key), None)
+
+def vocab_due_rows(student_id):
+    now = datetime.utcnow()
+    progress = {row.vocab_key: row for row in DETVocabularyProgress.query.filter_by(student_id=student_id).all()}
+    due = []
+    for item in DET_VOCABULARY:
+        row = progress.get(item["key"])
+        if row is None or row.next_review_at is None or row.next_review_at <= now:
+            due.append((item, row))
+    return due
+
 ESSAY_WRITESHOPS = [
     {
         "key": "hooks",
@@ -514,22 +832,41 @@ ESSAY_WRITESHOPS = [
 def get_writeshop(key):
     return next((item for item in ESSAY_WRITESHOPS if item["key"] == key), None)
 
+def latest_workshop_review(progress_id):
+    return EssayWorkshopReview.query.filter_by(progress_id=progress_id).order_by(
+        EssayWorkshopReview.created_at.desc()
+    ).first()
+
+def workshop_review_state(progress):
+    if not progress:
+        return "Not Started"
+    latest = latest_workshop_review(progress.id)
+    if not progress.completed:
+        return "In Progress" if (progress.content or "").strip() else "Not Started"
+    if not latest or (progress.updated_at and latest.created_at < progress.updated_at):
+        return "Pending Review"
+    if latest.decision == "Approve":
+        return "Approved"
+    if latest.decision == "Request Resubmission":
+        return "Resubmission Requested"
+    return "Pending Review"
+
 def sync_essay_training_milestone(student):
     if not student or student.role != "student":
         return
     ensure_year_milestones(student)
+    approved_keys = set()
+    for progress in EssayWorkshopProgress.query.filter_by(student_id=student.id).all():
+        if workshop_review_state(progress) == "Approved":
+            approved_keys.add(progress.workshop_key)
+
     required = {w["key"] for w in ESSAY_WRITESHOPS}
-    completed = {
-        row.workshop_key for row in EssayWorkshopProgress.query.filter_by(
-            student_id=student.id, completed=True
-        ).all()
-    }
     milestone = YearMilestone.query.filter_by(
         student_id=student.id, year_level=1, milestone_key="essay_training"
     ).first()
     if milestone:
-        milestone.status = "complete" if required.issubset(completed) else (
-            "in_progress" if completed else "not_started"
+        milestone.status = "complete" if required.issubset(approved_keys) else (
+            "in_progress" if approved_keys else "not_started"
         )
         milestone.completed_at = datetime.utcnow() if milestone.status == "complete" else None
         db.session.commit()
@@ -778,6 +1115,7 @@ def student_dashboard():
         year_progress=year_progress,
         carried_over_milestones=carried_over_milestones,
         all_year_progress=all_year_progress,
+        workshop_progress=workshop_progress,
         scores=scores,
         reflections=reflections,
         projects=projects,
@@ -789,6 +1127,54 @@ def student_dashboard():
         consultations=ConsultationEntry.query.filter_by(student_id=user.id).order_by(ConsultationEntry.created_at.desc()).limit(3).all() if user.year_level == 3 else [],
         milestones=ensure_year3_milestones(user.id) if user.year_level == 3 else [],
     )
+
+@app.route("/teacher/writeshop/<int:progress_id>/review", methods=["POST"])
+def teacher_review_writeshop(progress_id):
+    teacher = current_user()
+    if not teacher or teacher.role != "teacher":
+        return redirect(url_for("login"))
+
+    progress = EssayWorkshopProgress.query.get_or_404(progress_id)
+    student = db.session.get(User, progress.student_id)
+    decision = request.form.get("decision", "Comment")
+    comment = request.form.get("comment", "").strip()
+
+    if decision not in {"Approve", "Request Resubmission", "Comment"}:
+        flash("Invalid review action.", "error")
+        return redirect(url_for("teacher_student", student_id=student.id))
+
+    if decision == "Request Resubmission" and not comment:
+        flash("Please explain what the student should revise.", "error")
+        return redirect(url_for("teacher_student", student_id=student.id))
+
+    review = EssayWorkshopReview(
+        progress_id=progress.id,
+        teacher_id=teacher.id,
+        decision=decision,
+        comment=comment or "Teacher reviewed this writeshop.",
+    )
+    db.session.add(review)
+
+    if decision == "Request Resubmission":
+        progress.completed = False
+        progress.completed_at = None
+        activity = f"Revision requested: {get_writeshop(progress.workshop_key)['title']}"
+        icon = "🔁"
+    elif decision == "Approve":
+        progress.completed = True
+        activity = f"Writeshop approved: {get_writeshop(progress.workshop_key)['title']}"
+        icon = "✅"
+    else:
+        activity = f"Writeshop feedback: {get_writeshop(progress.workshop_key)['title']}"
+        icon = "💬"
+
+    db.session.commit()
+    sync_essay_training_milestone(student)
+    log_activity(student.id, "Essay Writeshop Review", activity, comment or decision, icon, teacher.id)
+    db.session.commit()
+    flash("Writeshop review saved.", "success")
+    return redirect(url_for("teacher_student", student_id=student.id))
+
 
 @app.route("/teacher/student/<int:student_id>/year-progress/<int:year>/<milestone_key>", methods=["POST"])
 def teacher_update_year_milestone(student_id, year, milestone_key):
@@ -1030,7 +1416,8 @@ def essay_writeshops():
 
     progress_rows = EssayWorkshopProgress.query.filter_by(student_id=user.id).all()
     progress_map = {row.workshop_key: row for row in progress_rows}
-    completed_count = sum(1 for row in progress_rows if row.completed)
+    review_states = {row.workshop_key: workshop_review_state(row) for row in progress_rows}
+    completed_count = sum(1 for state in review_states.values() if state == "Approved")
     total = len(ESSAY_WRITESHOPS)
     percent = round(completed_count / total * 100) if total else 0
 
@@ -1038,6 +1425,7 @@ def essay_writeshops():
         "essay_writeshops.html",
         workshops=ESSAY_WRITESHOPS,
         progress_map=progress_map,
+        review_states=review_states,
         completed_count=completed_count,
         total=total,
         percent=percent,
@@ -1084,11 +1472,11 @@ def essay_writeshop(workshop_key):
                 user.id,
                 "Essay Writeshop",
                 f"Completed: {workshop['title']}",
-                "Independent essay training completed.",
+                "Submitted for teacher review.",
                 "📝",
                 user.id,
             )
-            flash("Writeshop completed.", "success")
+            flash("Writeshop submitted for teacher review.", "success")
         else:
             flash("Writeshop draft saved.", "success")
 
@@ -1100,6 +1488,8 @@ def essay_writeshop(workshop_key):
         "essay_writeshop.html",
         workshop=workshop,
         progress=progress,
+        review_state=workshop_review_state(progress),
+        workshop_feedback=EssayWorkshopReview.query.filter_by(progress_id=progress.id).order_by(EssayWorkshopReview.created_at.desc()).all(),
         workshops=ESSAY_WRITESHOPS,
     )
 
@@ -1240,6 +1630,198 @@ def teacher_review_essay(submission_id):
     return redirect(url_for("essay_submission_view", submission_id=submission.id))
 
 
+@app.route("/det-course")
+def det_course():
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+
+    levels = []
+    for level, meta in DET_LEVELS.items():
+        progress = det_level_progress(user.id, level)
+        levels.append({
+            "level": level,
+            "meta": meta,
+            "progress": progress,
+            "unlocked": det_level_unlocked(user.id, level),
+        })
+
+    due_vocab = len(vocab_due_rows(user.id))
+    return render_template("det_course.html", levels=levels, due_vocab=due_vocab)
+
+
+@app.route("/det-course/level/<int:level>")
+def det_level(level):
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+    if level not in DET_LEVELS:
+        return redirect(url_for("det_course"))
+    if not det_level_unlocked(user.id, level):
+        flash("Complete at least 80 items in the previous level to unlock this level.", "error")
+        return redirect(url_for("det_course"))
+
+    themes = []
+    for theme_key, theme_title in DET_THEMES:
+        progress = det_theme_progress(user.id, level, theme_key)
+        items = [item for item in DET_ITEMS[level] if item["theme_key"] == theme_key]
+        first_open = next((item for item in items if not DETPracticeProgress.query.filter_by(
+            student_id=user.id, item_key=item["key"], correct=True
+        ).first()), items[-1])
+        themes.append({
+            "key": theme_key,
+            "title": theme_title,
+            "progress": progress,
+            "next_item": first_open,
+        })
+
+    return render_template(
+        "det_level.html",
+        level=level,
+        level_meta=DET_LEVELS[level],
+        themes=themes,
+        overall=det_level_progress(user.id, level),
+    )
+
+
+@app.route("/det-course/level/<int:level>/theme/<theme_key>")
+def det_theme(level, theme_key):
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+    if level not in DET_LEVELS or not det_level_unlocked(user.id, level):
+        return redirect(url_for("det_course"))
+    if theme_key not in {key for key, _ in DET_THEMES}:
+        return redirect(url_for("det_level", level=level))
+
+    items = [item for item in DET_ITEMS[level] if item["theme_key"] == theme_key]
+    progress_map = {
+        row.item_key: row for row in DETPracticeProgress.query.filter_by(
+            student_id=user.id, level=level
+        ).all()
+    }
+    next_item = next((item for item in items if not progress_map.get(item["key"]) or not progress_map[item["key"]].correct), items[-1])
+
+    return render_template(
+        "det_theme.html",
+        level=level,
+        level_meta=DET_LEVELS[level],
+        theme_title=next(title for key, title in DET_THEMES if key == theme_key),
+        theme_key=theme_key,
+        items=items,
+        progress_map=progress_map,
+        progress=det_theme_progress(user.id, level, theme_key),
+        next_item=next_item,
+    )
+
+
+@app.route("/det-course/level/<int:level>/item/<item_key>", methods=["GET", "POST"])
+def det_item(level, item_key):
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+    if level not in DET_LEVELS or not det_level_unlocked(user.id, level):
+        return redirect(url_for("det_course"))
+
+    item = get_det_item(level, item_key)
+    if not item:
+        return redirect(url_for("det_level", level=level))
+
+    row = DETPracticeProgress.query.filter_by(student_id=user.id, item_key=item_key).first()
+    result = None
+
+    if request.method == "POST":
+        answer = request.form.get("answer", "")
+        is_correct = answer == item["answer"]
+        if not row:
+            row = DETPracticeProgress(student_id=user.id, level=level, item_key=item_key)
+            db.session.add(row)
+        row.attempts += 1
+        row.last_answer = answer
+        row.correct = row.correct or is_correct
+        row.updated_at = datetime.utcnow()
+        db.session.commit()
+        result = {
+            "correct": is_correct,
+            "answer": item["answer"],
+            "explanation": item["explanation"],
+        }
+
+    return render_template(
+        "det_item.html",
+        level=level,
+        level_meta=DET_LEVELS[level],
+        item=item,
+        progress=row,
+        result=result,
+    )
+
+
+@app.route("/det-vocabulary")
+def det_vocabulary():
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+
+    due = vocab_due_rows(user.id)
+    progress_rows = DETVocabularyProgress.query.filter_by(student_id=user.id).all()
+    learned = sum(1 for row in progress_rows if row.box >= 4)
+    return render_template(
+        "det_vocabulary.html",
+        due_count=len(due),
+        learned=learned,
+        total=len(DET_VOCABULARY),
+        next_card=due[0][0] if due else None,
+    )
+
+
+@app.route("/det-vocabulary/<vocab_key>", methods=["GET", "POST"])
+def det_vocab_card(vocab_key):
+    user = current_user()
+    if not user or user.role != "student":
+        return redirect(url_for("login"))
+
+    item = get_vocab_item(vocab_key)
+    if not item:
+        return redirect(url_for("det_vocabulary"))
+
+    row = DETVocabularyProgress.query.filter_by(student_id=user.id, vocab_key=vocab_key).first()
+    if not row:
+        row = DETVocabularyProgress(student_id=user.id, vocab_key=vocab_key, next_review_at=datetime.utcnow())
+        db.session.add(row)
+        db.session.commit()
+
+    if request.method == "POST":
+        rating = request.form.get("rating", "good")
+        intervals = {
+            "again": (0, 0),
+            "hard": (max(1, row.box), 1),
+            "good": (min(5, row.box + 1), [1, 3, 7, 14, 30, 60][min(5, row.box + 1)]),
+            "easy": (min(5, row.box + 2), [1, 3, 7, 14, 30, 60][min(5, row.box + 2)]),
+        }
+        new_box, days = intervals.get(rating, intervals["good"])
+        row.box = new_box
+        row.reviews += 1
+        if rating in {"good", "easy"}:
+            row.correct_reviews += 1
+        row.last_reviewed_at = datetime.utcnow()
+        row.next_review_at = datetime.utcnow() + timedelta(days=days)
+        db.session.commit()
+
+        due = vocab_due_rows(user.id)
+        if due:
+            return redirect(url_for("det_vocab_card", vocab_key=due[0][0]["key"]))
+        flash("Vocabulary review complete for now.", "success")
+        return redirect(url_for("det_vocabulary"))
+
+    return render_template(
+        "det_vocab_card.html",
+        item=item,
+        progress=row,
+        remaining=len(vocab_due_rows(user.id)),
+    )
+
+
 @app.route("/det-prep", methods=["GET", "POST"])
 def det_prep():
     user = current_user()
@@ -1277,7 +1859,18 @@ def det_prep():
         return redirect(url_for("det_prep"))
 
     records = DETRecord.query.filter_by(student_id=user.id).order_by(DETRecord.created_at.desc()).all()
-    return render_template("det_prep.html", student=user, records=records)
+    level_summaries = [
+        {"level": level, "meta": DET_LEVELS[level], "progress": det_level_progress(user.id, level),
+         "unlocked": det_level_unlocked(user.id, level)}
+        for level in DET_LEVELS
+    ]
+    return render_template(
+        "det_prep.html",
+        student=user,
+        records=records,
+        level_summaries=level_summaries,
+        due_vocab=len(vocab_due_rows(user.id)),
+    )
 
 @app.route("/universities", methods=["GET", "POST"])
 def universities():
@@ -1625,9 +2218,21 @@ def delete_user_account_records(target_user):
                 EssayFeedback.submission_id.in_(submission_ids)
             ).delete(synchronize_session=False)
 
+        workshop_progress_ids = [
+            row[0] for row in db.session.query(EssayWorkshopProgress.id).filter(
+                EssayWorkshopProgress.student_id == target_user.id
+            ).all()
+        ]
+        if workshop_progress_ids:
+            EssayWorkshopReview.query.filter(
+                EssayWorkshopReview.progress_id.in_(workshop_progress_ids)
+            ).delete(synchronize_session=False)
+
         for model in [
             StudentAcademicProfile,
             EssayWorkshopProgress,
+            DETPracticeProgress,
+            DETVocabularyProgress,
             YearMilestone,
             CompetencyScore,
             Reflection,
@@ -1903,6 +2508,16 @@ def teacher_student(student_id):
     consultations = ConsultationEntry.query.filter_by(student_id=student.id).order_by(ConsultationEntry.created_at.desc()).all()
     milestones = ensure_year3_milestones(student.id) if student.year_level == 3 else []
     year_progress, carried_over_milestones, all_year_progress = build_year_progress(student)
+    workshop_rows = EssayWorkshopProgress.query.filter_by(student_id=student.id).all()
+    workshop_progress = []
+    for workshop in ESSAY_WRITESHOPS:
+        row = next((r for r in workshop_rows if r.workshop_key == workshop["key"]), None)
+        workshop_progress.append({
+            "workshop": workshop,
+            "progress": row,
+            "state": workshop_review_state(row) if row else "Not Started",
+            "latest_review": latest_workshop_review(row.id) if row else None,
+        })
 
     return render_template(
         "teacher_student.html",
@@ -2355,6 +2970,8 @@ def reset_all_students_once():
         for model in [
             StudentAcademicProfile,
             EssayWorkshopProgress,
+            DETPracticeProgress,
+            DETVocabularyProgress,
             YearMilestone,
             CompetencyScore,
             Reflection,

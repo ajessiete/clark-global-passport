@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-button" href="{{ url_for('det_course') }}">← DET Learning Path</a>
+<div class="page-title">
+    <p class="eyebrow">VOCABULARY TRAINER</p>
+    <h1>100-Word Spaced Repetition Deck</h1>
+    <p>Words return more or less often depending on how well you remember them.</p>
+</div>
+<div class="grid two">
+<section class="card">
+    <p class="eyebrow">DUE NOW</p>
+    <div class="score-main">{{ due_count }}</div>
+    <p>cards ready for review</p>
+    {% if next_card %}<a class="button" href="{{ url_for('det_vocab_card', vocab_key=next_card.key) }}">Start Review →</a>{% else %}<div class="year-complete-message">✓ You're caught up for now.</div>{% endif %}
+</section>
+<section class="card">
+    <p class="eyebrow">LONG-TERM MEMORY</p>
+    <div class="score-main">{{ learned }}</div>
+    <p>of {{ total }} words have reached Box 4 or higher.</p>
+</section>
+</div>
+{% endblock %}

@@ -45,7 +45,22 @@
             </div>
         </section>
 
-        <section class="card practice-card">
+        
+        {% if workshop_feedback %}
+        <section class="card workshop-feedback-card">
+            <p class="eyebrow">TEACHER FEEDBACK</p>
+            <h2>{{ review_state }}</h2>
+            {% for review in workshop_feedback %}
+            <div class="feedback-entry">
+                <span class="pill">{{ review.decision }}</span>
+                <p>{{ review.comment }}</p>
+                <small>{{ review.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+            </div>
+            {% endfor %}
+        </section>
+        {% endif %}
+
+<section class="card practice-card">
             <p class="eyebrow">TRY IT YOURSELF</p>
             <h2>Practice</h2>
             <p>{{ workshop.prompt }}</p>
@@ -78,12 +93,18 @@
                 </div>
                 <div class="editor-actions">
                     <button type="submit" name="action" value="save" class="secondary">Save Draft</button>
-                    <button type="submit" name="action" value="complete">✓ Mark Writeshop Complete</button>
+                    <button type="submit" name="action" value="complete">
+        {% if review_state == "Resubmission Requested" %}↻ Resubmit for Teacher Review{% else %}Submit for Teacher Review{% endif %}
+    </button>
                 </div>
             </form>
 
-            {% if progress.completed %}
-            <div class="year-complete-message">✓ You completed this writeshop. You can still return and improve your practice.</div>
+            {% if review_state == "Pending Review" %}
+            <div class="waiting-panel">Waiting for teacher review.</div>
+            {% elif review_state == "Approved" %}
+            <div class="year-complete-message">✓ Your teacher approved this writeshop.</div>
+            {% elif review_state == "Resubmission Requested" %}
+            <div class="resubmit-panel">↻ Your teacher asked you to revise and resubmit this writeshop.</div>
             {% endif %}
         </section>
     </main>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "clark-global-v10-6";
+const CACHE_NAME = "clark-global-v10-7";
 const OFFLINE_URL = "/offline";
 const SHELL = [
   OFFLINE_URL,
