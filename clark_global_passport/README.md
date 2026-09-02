@@ -207,3 +207,23 @@ Features:
 - teacher dashboards, adviser notes, consultations, and authenticated HTML are not stored in the PWA cache
 
 Offline drafts are stored in the browser's localStorage on that device. They are not submitted to the server until the user is online and submits the form.
+
+
+## v10 — Student Overview
+
+Teacher-side roster management now includes:
+
+- Student Overview page at `/teacher/students`
+- spreadsheet-style full student list
+- instant search by name or email
+- filter by year level
+- filter by assigned adviser/teacher
+- filter by EIKEN level
+- sortable Student, Year, Adviser, EIKEN, DET, Essay, Universities, Applications, and Last Activity columns
+- quick edit for Year, Adviser, and EIKEN
+- CSV export
+- EIKEN/student number/homeroom academic profile fields
+- legacy Yuki/Haruto demo student accounts are removed automatically
+- fresh databases no longer create fake student accounts
+- first teacher account on a completely fresh database becomes active so the system can be bootstrapped
+- the old public demo-credentials box has been removed from the login page

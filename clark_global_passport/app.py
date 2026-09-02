@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, make_response
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, make_response, Response
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import csv
+import io
 import os
 
 app = Flask(__name__)
@@ -40,6 +42,14 @@ class User(db.Model):
     portfolio_items = db.relationship("PortfolioItem", backref="student", lazy=True, cascade="all, delete-orphan")
     future_goals = db.relationship("FutureGoal", backref="student", lazy=True, cascade="all, delete-orphan")
     competency_scores = db.relationship("CompetencyScore", backref="student", lazy=True, cascade="all, delete-orphan")
+
+class StudentAcademicProfile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False)
+    eiken_level = db.Column(db.String(30), default="")
+    student_number = db.Column(db.String(50), default="")
+    homeroom = db.Column(db.String(80), default="")
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class CompetencyScore(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -192,6 +202,29 @@ class FutureGoal(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+
+EIKEN_LEVELS = [
+    "",
+    "5",
+    "4",
+    "3",
+    "Pre-2",
+    "Pre-2 Plus",
+    "2",
+    "Pre-1",
+    "1",
+]
+
+def get_academic_profile(student_id):
+    profile = StudentAcademicProfile.query.filter_by(student_id=student_id).first()
+    if not profile:
+        profile = StudentAcademicProfile(student_id=student_id)
+        db.session.add(profile)
+        db.session.flush()
+    return profile
+
+def student_last_activity(student_id):
+    return ActivityLog.query.filter_by(student_id=student_id).order_by(ActivityLog.created_at.desc()).first()
 
 ESSAY_STAGES = [
     "Story Bank",
@@ -404,8 +437,10 @@ def register():
         else:
             year_level = None
             is_transfer = False
-            # New teacher accounts need an existing teacher to approve them.
-            account_status = "pending"
+            # The first teacher can bootstrap a fresh installation.
+            # Later teacher accounts require approval from an active teacher.
+            active_teacher_exists = User.query.filter_by(role="teacher", account_status="active").first() is not None
+            account_status = "pending" if active_teacher_exists else "active"
 
         new_user = User(
             name=name,
@@ -420,6 +455,7 @@ def register():
         db.session.flush()
 
         if role == "student":
+            db.session.add(StudentAcademicProfile(student_id=new_user.id))
             for competency in COMPETENCIES:
                 db.session.add(
                     CompetencyScore(
@@ -440,7 +476,10 @@ def register():
         db.session.commit()
 
         if role == "teacher":
-            flash("Teacher account created. An existing teacher must approve it before you can sign in.", "success")
+            if account_status == "active":
+                flash("Teacher account created. You can now sign in.", "success")
+            else:
+                flash("Teacher account created. An existing teacher must approve it before you can sign in.", "success")
         else:
             flash("Account created. You can now sign in.", "success")
 
@@ -1105,6 +1144,150 @@ def teacher_dashboard():
         pending_essays=pending_essays,
     )
 
+
+@app.route("/teacher/students")
+def teacher_students():
+    user = current_user()
+    if not user or user.role != "teacher":
+        return redirect(url_for("login"))
+
+    students = User.query.filter_by(role="student").order_by(User.name.asc()).all()
+    teachers = User.query.filter_by(role="teacher", account_status="active").order_by(User.name.asc()).all()
+    rows = []
+
+    for student in students:
+        profile = get_academic_profile(student.id)
+        adviser = db.session.get(User, student.adviser_id) if student.adviser_id else None
+
+        essays = EssaySubmission.query.filter_by(student_id=student.id).order_by(EssaySubmission.submitted_at.desc()).all()
+        latest_essay = essays[0] if essays else None
+
+        det_records = DETRecord.query.filter_by(student_id=student.id).order_by(DETRecord.created_at.desc()).all()
+        official_det = next((r for r in det_records if (r.record_type or "").lower() == "official"), None)
+        latest_det = det_records[0] if det_records else None
+
+        universities = UniversityOption.query.filter_by(student_id=student.id).all()
+        applied_count = sum(1 for u in universities if u.applied or u.status == "Submitted")
+        latest_activity = student_last_activity(student.id)
+
+        rows.append({
+            "student": student,
+            "profile": profile,
+            "adviser": adviser,
+            "latest_essay": latest_essay,
+            "official_det": official_det,
+            "latest_det": latest_det,
+            "university_count": len(universities),
+            "applied_count": applied_count,
+            "latest_activity": latest_activity,
+        })
+
+    db.session.commit()
+    return render_template(
+        "teacher_students.html",
+        rows=rows,
+        teachers=teachers,
+        eiken_levels=EIKEN_LEVELS,
+    )
+
+
+@app.route("/teacher/students/<int:student_id>/quick-update", methods=["POST"])
+def teacher_student_quick_update(student_id):
+    user = current_user()
+    if not user or user.role != "teacher":
+        return redirect(url_for("login"))
+
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+    profile = get_academic_profile(student.id)
+
+    eiken_level = request.form.get("eiken_level", "").strip()
+    if eiken_level not in EIKEN_LEVELS:
+        eiken_level = ""
+    profile.eiken_level = eiken_level
+
+    adviser_raw = request.form.get("adviser_id", "").strip()
+    if adviser_raw:
+        try:
+            adviser_id = int(adviser_raw)
+        except ValueError:
+            adviser_id = None
+        adviser = User.query.filter_by(id=adviser_id, role="teacher", account_status="active").first() if adviser_id else None
+        student.adviser_id = adviser.id if adviser else None
+    else:
+        student.adviser_id = None
+
+    year_raw = request.form.get("year_level", "").strip()
+    try:
+        year_level = int(year_raw)
+    except ValueError:
+        year_level = student.year_level or 1
+    if year_level in [1, 2, 3]:
+        student.year_level = year_level
+
+    profile.updated_at = datetime.utcnow()
+    db.session.commit()
+    flash(f"{student.name}'s overview details were updated.", "success")
+    return redirect(url_for("teacher_students"))
+
+
+@app.route("/teacher/students/export.csv")
+def teacher_students_export():
+    user = current_user()
+    if not user or user.role != "teacher":
+        return redirect(url_for("login"))
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Student",
+        "Email",
+        "Year",
+        "Adviser",
+        "EIKEN",
+        "DET",
+        "DET Type",
+        "Essay Stage",
+        "Essay Status",
+        "Universities Researched",
+        "Applications Submitted",
+        "Account Status",
+        "Last Activity",
+    ])
+
+    students = User.query.filter_by(role="student").order_by(User.name.asc()).all()
+    for student in students:
+        profile = get_academic_profile(student.id)
+        adviser = db.session.get(User, student.adviser_id) if student.adviser_id else None
+        latest_essay = EssaySubmission.query.filter_by(student_id=student.id).order_by(EssaySubmission.submitted_at.desc()).first()
+        det_records = DETRecord.query.filter_by(student_id=student.id).order_by(DETRecord.created_at.desc()).all()
+        official_det = next((r for r in det_records if (r.record_type or "").lower() == "official"), None)
+        latest_det = official_det or (det_records[0] if det_records else None)
+        universities = UniversityOption.query.filter_by(student_id=student.id).all()
+        applied_count = sum(1 for u in universities if u.applied or u.status == "Submitted")
+        latest_activity = student_last_activity(student.id)
+
+        writer.writerow([
+            student.name,
+            student.email,
+            student.year_level or "",
+            adviser.name if adviser else "",
+            profile.eiken_level or "",
+            latest_det.score if latest_det and latest_det.score is not None else "",
+            latest_det.record_type if latest_det else "",
+            latest_essay.stage if latest_essay else "",
+            latest_essay.status if latest_essay else "",
+            len(universities),
+            applied_count,
+            student.account_status,
+            latest_activity.created_at.strftime("%Y-%m-%d %H:%M") if latest_activity else "",
+        ])
+
+    db.session.commit()
+    response = Response(output.getvalue(), mimetype="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=clark_global_student_overview.csv"
+    return response
+
+
 @app.route("/teacher/student/<int:student_id>")
 def teacher_student(student_id):
     user = current_user()
@@ -1124,6 +1307,8 @@ def teacher_student(student_id):
     return render_template(
         "teacher_student.html",
         student=student,
+        academic_profile=get_academic_profile(student.id),
+        eiken_levels=EIKEN_LEVELS,
         scores=get_scores(student),
         pathway=get_year_pathway(student.year_level or 1),
         essays=essays,
@@ -1225,6 +1410,25 @@ def review_promotion(request_id, action):
 
     db.session.commit()
     return redirect(url_for("teacher_dashboard"))
+
+
+
+@app.route("/teacher/student/<int:student_id>/academic-profile", methods=["POST"])
+def update_academic_profile(student_id):
+    user = current_user()
+    if not user or user.role != "teacher":
+        return redirect(url_for("login"))
+
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+    profile = get_academic_profile(student.id)
+    eiken_level = request.form.get("eiken_level", "").strip()
+    profile.eiken_level = eiken_level if eiken_level in EIKEN_LEVELS else ""
+    profile.student_number = request.form.get("student_number", "").strip()[:50]
+    profile.homeroom = request.form.get("homeroom", "").strip()[:80]
+    profile.updated_at = datetime.utcnow()
+    db.session.commit()
+    flash("Student academic profile updated.", "success")
+    return redirect(url_for("teacher_student", student_id=student.id))
 
 
 @app.route("/teacher/student/<int:student_id>/adviser", methods=["POST"])
@@ -1363,94 +1567,48 @@ def teacher_update_competency(student_id):
     flash("Competency score updated.", "success")
     return redirect(url_for("teacher_student", student_id=student.id))
 
-def seed_data():
-    if User.query.first():
+
+def remove_legacy_demo_students():
+    """Remove only the two fake student records shipped in older prototypes."""
+    demo_emails = ["yuki@clark.local", "haruto@clark.local"]
+    demo_students = User.query.filter(User.email.in_(demo_emails), User.role == "student").all()
+    if not demo_students:
         return
 
-    teacher = User(
-        name="International Course Teacher",
-        email="teacher@clark.local",
-        password_hash=generate_password_hash("teacher123"),
-        role="teacher",
-    )
+    ids = [student.id for student in demo_students]
 
-    student1 = User(
-        name="Yuki Tanaka",
-        email="yuki@clark.local",
-        password_hash=generate_password_hash("student123"),
-        role="student",
-        year_level=2,
-    )
+    # Delete dependent records explicitly so this works consistently on SQLite/PostgreSQL.
+    EssayFeedback.query.filter(
+        EssayFeedback.submission_id.in_(
+            db.session.query(EssaySubmission.id).filter(EssaySubmission.student_id.in_(ids))
+        )
+    ).delete(synchronize_session=False)
 
-    student2 = User(
-        name="Haruto Sato",
-        email="haruto@clark.local",
-        password_hash=generate_password_hash("student123"),
-        role="student",
-        year_level=1,
-    )
+    for model in [
+        CompetencyScore,
+        Reflection,
+        Project,
+        PortfolioItem,
+        EssaySubmission,
+        ConsultationEntry,
+        Year3Milestone,
+        DETRecord,
+        UniversityOption,
+        PromotionRequest,
+        ActivityLog,
+        TeacherNote,
+        FutureGoal,
+        StudentAcademicProfile,
+    ]:
+        model.query.filter(model.student_id.in_(ids)).delete(synchronize_session=False)
 
-    db.session.add_all([teacher, student1, student2])
+    User.query.filter(User.id.in_(ids)).delete(synchronize_session=False)
     db.session.commit()
 
-    for student in [student1, student2]:
-        for i, competency in enumerate(COMPETENCIES):
-            db.session.add(CompetencyScore(
-                student_id=student.id,
-                competency=competency,
-                score=max(1, 6 - (i % 4))
-            ))
-
-    db.session.add(Project(
-        student_id=student1.id,
-        title="Philippines PBL Project",
-        question="How can students in Japan and the Philippines learn from each other?",
-        stage="Create",
-        description="Working with a student team to create materials for international collaboration.",
-        next_action="Prepare the next online meeting and collect feedback."
-    ))
-
-    db.session.add(Reflection(
-        student_id=student1.id,
-        title="Oral Interpretation Festival",
-        experience="Our group performed a spoken-word piece about anxiety awareness.",
-        contribution="I helped with timing, expression, and group practice.",
-        challenge="It was difficult to communicate the message naturally without sounding memorized.",
-        learning="I learned that communication includes voice, gesture, facial expression, and empathy.",
-        next_step="I want to become more confident when speaking in front of an audience.",
-        competency="Communication"
-    ))
-
-    db.session.add(PortfolioItem(
-        student_id=student1.id,
-        title="Best Message Award",
-        category="Competition",
-        description="Received a major award for successfully delivering the team's message.",
-        evidence="Certificate / event program"
-    ))
-
-    db.session.add(FutureGoal(
-        student_id=student1.id,
-        university_interest="Overseas university or English-medium program in Japan",
-        field_interest="International Relations",
-        career_interest="International organization / education",
-        personal_statement_ideas="Cross-cultural collaboration, public speaking, and anxiety-awareness project.",
-        next_step="Research three universities and compare entry requirements."
-    ))
-
-    db.session.commit()
-
-    activity_seed_items = [
-        ActivityLog(student_id=student1.id, actor_id=student1.id, activity_type="Project", title="Philippines PBL Project", detail="Started project • Stage: Create", icon="🧭"),
-        ActivityLog(student_id=student1.id, actor_id=student1.id, activity_type="Reflection", title="Oral Interpretation Festival", detail="New reflection • Communication", icon="💭"),
-        ActivityLog(student_id=student1.id, actor_id=student1.id, activity_type="Portfolio", title="Best Message Award", detail="Added evidence • Competition", icon="📁"),
-    ]
-    db.session.add_all(activity_seed_items)
-    db.session.commit()
 
 with app.app_context():
     db.create_all()
-    seed_data()
+    remove_legacy_demo_students()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

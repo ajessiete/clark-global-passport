@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Student Overview | Clark Global Passport{% endblock %}
+{% block content %}
+<section class="teacher-roster-hero">
+    <div>
+        <p class="eyebrow">TEACHER WORKSPACE</p>
+        <h1>Student Overview</h1>
+        <p class="muted">Search, filter, sort, and quickly update the entire International Course roster.</p>
+    </div>
+    <div class="roster-hero-actions">
+        <a class="button secondary" href="{{ url_for('teacher_dashboard') }}">← Dashboard</a>
+        <a class="button" href="{{ url_for('teacher_students_export') }}">Export CSV</a>
+    </div>
+</section>
+
+<section class="roster-stats">
+    <div class="roster-stat">
+        <strong>{{ rows|length }}</strong>
+        <span>Total students</span>
+    </div>
+    {% for y in [1,2,3] %}
+    <div class="roster-stat">
+        <strong>{{ rows|selectattr('student.year_level', 'equalto', y)|list|length }}</strong>
+        <span>Year {{ y }}</span>
+    </div>
+    {% endfor %}
+    <div class="roster-stat">
+        <strong>{{ rows|selectattr('adviser')|list|length }}</strong>
+        <span>Adviser assigned</span>
+    </div>
+</section>
+
+<section class="card roster-controls-card">
+    <div class="roster-controls">
+        <label class="roster-search">
+            <span>Search</span>
+            <input id="student-search" type="search" placeholder="Student name or email">
+        </label>
+
+        <label>
+            <span>Year</span>
+            <select id="year-filter">
+                <option value="">All years</option>
+                <option value="1">Year 1</option>
+                <option value="2">Year 2</option>
+                <option value="3">Year 3</option>
+            </select>
+        </label>
+
+        <label>
+            <span>Adviser</span>
+            <select id="adviser-filter">
+                <option value="">All advisers</option>
+                <option value="unassigned">Unassigned</option>
+                {% for teacher in teachers %}
+                <option value="{{ teacher.id }}">{{ teacher.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label>
+            <span>EIKEN</span>
+            <select id="eiken-filter">
+                <option value="">All levels</option>
+                <option value="none">Not recorded</option>
+                {% for level in eiken_levels %}
+                    {% if level %}<option value="{{ level }}">{{ level }}</option>{% endif %}
+                {% endfor %}
+            </select>
+        </label>
+
+        <button id="clear-roster-filters" class="button secondary" type="button">Clear</button>
+    </div>
+    <div class="roster-result-line">
+        Showing <strong id="visible-student-count">{{ rows|length }}</strong> of {{ rows|length }} students
+    </div>
+</section>
+
+<section class="card roster-table-card">
+    <div class="table-wrap roster-table-wrap">
+        <table id="student-overview-table" class="student-overview-table">
+            <thead>
+                <tr>
+                    <th><button class="sort-heading" data-sort="name" type="button">Student <span>↕</span></button></th>
+                    <th><button class="sort-heading" data-sort="year" type="button">Year <span>↕</span></button></th>
+                    <th><button class="sort-heading" data-sort="adviser" type="button">Adviser <span>↕</span></button></th>
+                    <th><button class="sort-heading" data-sort="eiken" type="button">EIKEN <span>↕</span></button></th>
+                    <th><button class="sort-heading" data-sort="det" type="button">DET <span>↕</span></button></th>
+                    <th><button class="sort-heading" data-sort="essay" type="button">Essay <span>↕</span></button></th>
+                    <th><button class="sort-heading" data-sort="universities" type="button">Universities <span>↕</span></button></th>
+                    <th><button class="sort-heading" data-sort="applications" type="button">Applications <span>↕</span></button></th>
+                    <th><button class="sort-heading" data-sort="activity" type="button">Last Activity <span>↕</span></button></th>
+                    <th>Quick Edit</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+                {% set det = row.official_det or row.latest_det %}
+                <tr
+                    data-name="{{ row.student.name|lower }}"
+                    data-email="{{ row.student.email|lower }}"
+                    data-year="{{ row.student.year_level or '' }}"
+                    data-adviser-id="{{ row.adviser.id if row.adviser else 'unassigned' }}"
+                    data-adviser="{{ row.adviser.name|lower if row.adviser else 'zzzz unassigned' }}"
+                    data-eiken="{{ row.profile.eiken_level or 'none' }}"
+                    data-det="{{ det.score if det and det.score is not none else -1 }}"
+                    data-essay="{{ row.latest_essay.stage|lower if row.latest_essay else 'zzzz not started' }}"
+                    data-universities="{{ row.university_count }}"
+                    data-applications="{{ row.applied_count }}"
+                    data-activity="{{ row.latest_activity.created_at.timestamp() if row.latest_activity else 0 }}"
+                >
+                    <td class="student-cell">
+                        <a href="{{ url_for('teacher_student', student_id=row.student.id) }}">
+                            <strong>{{ row.student.name }}</strong>
+                        </a>
+                        <small>{{ row.student.email }}</small>
+                    </td>
+                    <td><span class="year-pill">Year {{ row.student.year_level }}</span></td>
+                    <td>
+                        {% if row.adviser %}
+                            {{ row.adviser.name }}
+                        {% else %}
+                            <span class="muted">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.profile.eiken_level %}
+                            <span class="eiken-pill">{{ row.profile.eiken_level }}</span>
+                        {% else %}
+                            <span class="muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if det %}
+                            <strong>{{ det.score if det.score is not none else 'Recorded' }}</strong>
+                            <small>{{ 'Official' if row.official_det else 'Practice' }}</small>
+                        {% else %}
+                            <span class="muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.latest_essay %}
+                            <span>{{ row.latest_essay.stage }}</span>
+                            <small>{{ row.latest_essay.status }}</small>
+                        {% else %}
+                            <span class="muted">Not started</span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ row.university_count }}</strong><small>researched</small></td>
+                    <td>
+                        {% if row.applied_count %}
+                            <span class="status-good">{{ row.applied_count }} submitted</span>
+                        {% else %}
+                            <span class="muted">0</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.latest_activity %}
+                            {{ row.latest_activity.created_at.strftime('%Y-%m-%d') }}
+                            <small>{{ row.latest_activity.activity_type }}</small>
+                        {% else %}
+                            <span class="muted">No activity</span>
+                        {% endif %}
+                    </td>
+                    <td class="quick-edit-cell">
+                        <details>
+                            <summary>Quick edit</summary>
+                            <form method="post" action="{{ url_for('teacher_student_quick_update', student_id=row.student.id) }}" class="quick-edit-form">
+                                <label>
+                                    Year
+                                    <select name="year_level">
+                                        {% for y in [1,2,3] %}
+                                        <option value="{{ y }}" {% if row.student.year_level == y %}selected{% endif %}>Year {{ y }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label>
+                                    Adviser
+                                    <select name="adviser_id">
+                                        <option value="">— Unassigned —</option>
+                                        {% for teacher in teachers %}
+                                        <option value="{{ teacher.id }}" {% if row.adviser and row.adviser.id == teacher.id %}selected{% endif %}>{{ teacher.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label>
+                                    EIKEN
+                                    <select name="eiken_level">
+                                        <option value="">— Not recorded —</option>
+                                        {% for level in eiken_levels %}
+                                            {% if level %}
+                                            <option value="{{ level }}" {% if row.profile.eiken_level == level %}selected{% endif %}>{{ level }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <button type="submit">Save</button>
+                            </form>
+                        </details>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="10" class="empty-roster">No student accounts yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div id="no-filter-results" class="roster-empty-filter" hidden>No students match those filters.</div>
+</section>
+
+<script src="{{ url_for('static', filename='js/student_overview.js') }}"></script>
+{% endblock %}

@@ -19,6 +19,41 @@
 <section class="card">
     <div class="section-heading">
         <div>
+            <p class="eyebrow">ACADEMIC PROFILE</p>
+            <h2>School & English Level</h2>
+        </div>
+        <a class="button secondary small" href="{{ url_for('teacher_students') }}">Open Student Overview →</a>
+    </div>
+    <form method="post" action="{{ url_for('update_academic_profile', student_id=student.id) }}" class="academic-profile-grid">
+        <label>
+            Student number
+            <input name="student_number" value="{{ academic_profile.student_number or '' }}" placeholder="Optional">
+        </label>
+        <label>
+            Homeroom / class
+            <input name="homeroom" value="{{ academic_profile.homeroom or '' }}" placeholder="Optional">
+        </label>
+        <label>
+            EIKEN level
+            <select name="eiken_level">
+                <option value="">— Not recorded —</option>
+                {% for level in eiken_levels %}
+                    {% if level %}
+                    <option value="{{ level }}" {% if academic_profile.eiken_level == level %}selected{% endif %}>{{ level }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </label>
+        <div class="academic-profile-save">
+            <button type="submit">Save profile</button>
+        </div>
+    </form>
+</section>
+
+
+<section class="card">
+    <div class="section-heading">
+        <div>
             <p class="eyebrow">PERSONAL ESSAY</p>
             <h2>Teacher-Gated Essay Progress</h2>
         </div>

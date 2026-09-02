@@ -1,6 +1,16 @@
 
 {% extends "base.html" %}
 {% block content %}
+
+<section class="roster-dashboard-callout">
+    <div>
+        <p class="eyebrow">WHOLE-COURSE VIEW</p>
+        <h2>Student Overview</h2>
+        <p>See the full roster in one sortable view and filter by year, adviser, EIKEN level, and more.</p>
+    </div>
+    <a class="button" href="{{ url_for('teacher_students') }}">Open Student Overview →</a>
+</section>
+
 <div class="page-title">
     <p class="eyebrow">INTERNATIONAL COURSE</p>
     <h1>Teacher Dashboard</h1>

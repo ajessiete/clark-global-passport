@@ -461,3 +461,135 @@ th{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.
 @media (max-width:640px){
     .pwa-utility{right:10px;bottom:10px}
 }
+
+
+/* Student Overview v10 */
+.teacher-roster-hero{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:24px;
+    margin-bottom:18px
+}
+.teacher-roster-hero h1{margin:.2rem 0 .35rem;font-size:clamp(2rem,4vw,3rem)}
+.roster-hero-actions{display:flex;gap:10px;flex-wrap:wrap}
+.roster-stats{
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:12px;
+    margin-bottom:16px
+}
+.roster-stat{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px
+}
+.roster-stat strong{display:block;font-size:1.6rem;color:var(--navy)}
+.roster-stat span{font-size:.8rem;color:var(--muted)}
+.roster-controls{
+    display:grid;
+    grid-template-columns:minmax(220px,2fr) repeat(3,minmax(140px,1fr)) auto;
+    gap:12px;
+    align-items:end
+}
+.roster-controls label{display:grid;gap:6px;font-size:.78rem;font-weight:700;color:var(--muted)}
+.roster-controls input,.roster-controls select{width:100%}
+.roster-result-line{margin-top:12px;font-size:.82rem;color:var(--muted)}
+.roster-table-wrap{max-height:68vh;overflow:auto}
+.student-overview-table{min-width:1250px}
+.student-overview-table thead th{
+    position:sticky;
+    top:0;
+    z-index:3;
+    background:#f8fafb
+}
+.student-overview-table tbody tr:hover{background:#fbfdfc}
+.student-overview-table td{vertical-align:top}
+.student-cell strong{display:block;color:var(--navy)}
+.student-cell small,.student-overview-table td small{display:block;margin-top:4px;color:var(--muted)}
+.sort-heading{
+    appearance:none;
+    border:0;
+    background:transparent;
+    padding:0;
+    color:inherit;
+    font:inherit;
+    font-weight:800;
+    cursor:pointer;
+    display:inline-flex;
+    gap:6px;
+    align-items:center
+}
+.sort-heading span{color:var(--muted)}
+.sort-heading.active-sort{color:var(--green)}
+.year-pill,.eiken-pill{
+    display:inline-flex;
+    border-radius:999px;
+    padding:5px 9px;
+    font-size:.75rem;
+    font-weight:800;
+    background:#eef4f8;
+    color:var(--navy)
+}
+.eiken-pill{background:#eef7f3;color:#276654}
+.quick-edit-cell details{min-width:120px}
+.quick-edit-cell summary{
+    cursor:pointer;
+    color:var(--blue);
+    font-weight:700;
+    list-style:none
+}
+.quick-edit-form{
+    position:absolute;
+    right:20px;
+    width:260px;
+    margin-top:8px;
+    padding:14px;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:0 14px 34px rgba(20,35,60,.16);
+    z-index:10;
+    display:grid;
+    gap:10px
+}
+.quick-edit-form label{display:grid;gap:4px;font-size:.75rem;color:var(--muted)}
+.quick-edit-form select{width:100%}
+.roster-table-card{position:relative}
+.roster-empty-filter{
+    padding:28px;
+    text-align:center;
+    color:var(--muted)
+}
+.empty-roster{text-align:center;padding:36px!important;color:var(--muted)}
+.academic-profile-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr)) auto;
+    gap:12px;
+    align-items:end
+}
+.academic-profile-grid label{display:grid;gap:6px;font-weight:700;font-size:.82rem}
+.roster-dashboard-callout{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:18px;
+    background:linear-gradient(135deg,#f0f7f4,#f8fbfa);
+    border:1px solid #d5e7df;
+    border-radius:18px;
+    padding:20px 22px;
+    margin-bottom:18px
+}
+.roster-dashboard-callout h2{margin:.15rem 0}
+.roster-dashboard-callout p:last-child{margin-bottom:0;color:var(--muted)}
+@media(max-width:1000px){
+    .roster-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .roster-controls{grid-template-columns:1fr 1fr}
+    .academic-profile-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:650px){
+    .teacher-roster-hero,.roster-dashboard-callout{align-items:stretch;flex-direction:column}
+    .roster-stats,.roster-controls,.academic-profile-grid{grid-template-columns:1fr}
+    .roster-hero-actions{width:100%}
+}
