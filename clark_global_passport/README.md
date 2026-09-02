@@ -409,3 +409,11 @@ The IELTS ranges are internal course labels and are not presented as an official
 - Within a unit, practice items unlock one at a time after the previous item is answered correctly.
 - DET answer saving has been hardened with explicit defaults, answer normalization, transaction rollback, and controlled error handling.
 - A failed answer save now logs the underlying server exception instead of producing an unhandled Internal Server Error.
+
+
+## v10.8.2 - Dashboard Context Fix
+
+- Fixes the `/student` Internal Server Error caused by a teacher-only
+  `workshop_progress` variable being passed to the student dashboard.
+- Preserves `workshop_progress` on the teacher student profile where
+  Writeshop review controls need it.
